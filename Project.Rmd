@@ -1,0 +1,231 @@
+---
+title: "Project_Valerie_Florence_EpiGenetics"
+author: "Valerie Heckendorn and Florence Marti"
+date: "2025-05-07"
+output: html_document
+---
+
+# Introduction and background
+
+When monocytes—macrophage precursor cells found in the blood—migrate into tissue, they differentiate into macrophages and polarize into distinct functional phenotypes, most commonly referred to as either pro-inflammatory (M1) or anti-inflammatory (M2) macrophages. This polarization is primarily driven by the cytokine environment within the tissue. For example, interferon-γ (IFN-γ) and lipopolysaccharide (LPS) promote M1 polarization, while interleukin-4 (IL-4) and interleukin-13 (IL-13) favor M2 polarization. (Mantovani et al., 2002.)
+
+Infection or vaccination can induce a phenomenon known as "trained immunity," where monocytes and macrophages undergo epigenetic reprogramming that enhances their long-term responsiveness to microbial stimuli (Netea et al., 2016).
+
+Conversely, during sepsis, monocytes can enter a state of immunoparalysis (also called endotoxin tolerance), a common complication of severe sepsis. In this state, monocytes exhibit a reduced capacity to produce pro-inflammatory cytokines (such as TNF-α and IL-6) in response to subsequent stimulation, while often maintaining or increasing anti-inflammatory cytokine production (e.g., IL-10) (Hotchkiss et al., 2013).
+
+Histone and DNA modifications have been hypothesized to play a role in regulating monocyte and macrophage phenotypes (16), but data are limited to a few genes and histone modifications.
+In the original publication, the authors compared histone modifications of LPS-primed monocytes mimicking sepsis and ß-glucan (BG)-primed monocytes, mimicking trained immunity. In our project, we aim to compare the histone marks of LPS- and BG-primed macrophages. Like in the original publication, we analysed the histone marks **H3K4me3** (promoters), **H3K4me1** (enhancers), and **M3K27ac** (active promoters and enhancers), and identified general changes in promoter and enhancer regions. We defined a set of *x* genes, that were differentially expressed in the two groups and used these regions to determine if we could assign the LPS- or BG-primed macrophages to pro- or anti-inflammatory macrophage subgroups. 
+Furthermore we looked at the combination of histone marks to see promoter and enhancer regions that are active, which we identified as a combination of the histone methylation and the acetlyation. 
+
+
+For the analyis comparing the changes in histone marks upon priming with either BG or LPS, the histone marks of the primed macrophages are compared to the controls, cultured in RPMI. 
+
+
+# Methods
+
+## Setup and download
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence")
+```
+
+```{r, include = FALSE}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(ensembldb)
+  library(GenomicRanges)
+  library(epiwraps)
+  library(rtracklayer)
+  library(ggplot2)
+  library(magick)
+  library(R.utils) 
+  library(MASS)
+})
+```
+
+
+The filtered and preprocessed data is available to download, we just downloaded the LPS and BG dataset for our analysis.
+
+```{r, eval = FALSE, include = FALSE}
+#Downloading and unzipping the four files 
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE58310&format=file&file=GSE58310%5FBGall4Buffy891112merge%2Ehg19%2Ehotspot%2Etwopass%2Efdr0%2E01%2Ebed%2Egz","BG.bed.gz")
+
+gunzip("BG.bed.gz")
+BG <- rtracklayer::import("BG.bed", format = "BED")
+
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE58310&format=file&file=GSE58310%5FBuffy101112Day0merge%2Ehg19%2Ehotspot%2Etwopass%2Efdr0%2E01%2Ebed%2Egz", "buffy_hotspot.bed.gz")
+gunzip("buffy_hotspot.bed.gz")
+independent_replicated<- rtracklayer::import("buffy_hotspot.bed", format = "BED")
+
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE58310&format=file&file=GSE58310%5FLPSall4Buffy891112merge%2Ehg19%2Ehotspot%2Etwopass%2Efdr0%2E01%2Ebed%2Egz", "LPS.bed.gz")
+gunzip("LPS.bed.gz")
+LPS <- rtracklayer::import("LPS.bed", format = "BED")
+
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE58310&format=file&file=GSE58310%5FRPMIall4Buffy891112merge%2Ehg19%2Ehotspot%2Etwopass%2Efdr0%2E01%2Ebed%2Egz", "RPMI.bed.gz")
+gunzip("RPMI.bed.gz")
+control <- rtracklayer::import("RPMI.bed", format = "BED")
+
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?format=file&type=rnaseq_counts&file=Human.GRCh38.p13.annot.tsv.gz", "GRCh38annot.tsv.gz")
+gunzip("GRCh38annot.tsv.gz")
+
+download.file("https://ftp.ncbi.nlm.nih.gov/geo/series/GSE58nnn/GSE58310/suppl/GSE58310_GeneExpression.csv.gz","gene_expression.csv.gz")
+
+gunzip("gene_expression.csv.gz")
+gene_expression <- read.csv("gene_expression.csv")
+
+colnames(gene_expression) <- c("Gene_Id","Control_D0_1", "Control_D0_2", "Control_D0_3","Control_D0_4", "Control_D6_1", "Control_D6_2", "Control_D6_3","Control_D6_4", "LPS_D6_1", "LPS_D6_2", "LPS_D6_3","LPS_D6_4", "BG_D6_1", "BG_D6_2", "BG_D6_3","BG_D6_4")
+```
+
+## Downloading the histone modifications
+
+### Monocytes
+```{r}
+options(timeout = 12000)
+
+#H3K4me4
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406294&format=file&file=GSM1406294%5FMo%5FH3K4me3%5F5631%5FNR%2Ebed%2Egz", "H3K4me4_M0_BC17.bed.gz")
+gunzip("H3K4me4_M0_BC17.bed.gz")
+H3K4me4_M0_BC17 <- rtracklayer::import("H3K4me4_M0_BC17.bed", format = "BED")
+
+
+#H3K27ac
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406295&format=file&file=GSM1406295%5FMo%5FH3K27ac%5F5632%5FNR%2Ebed%2Egz", "H3K27ac_M0_BC17.bed.gz")
+gunzip("H3K27ac_M0_BC17.bed.gz")
+H3K27ac_M0_BC17 <- rtracklayer::import("H3K27ac_M0_BC17.bed", format = "BED")
+
+
+#H3K3me1
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406296&format=file&file=GSM1406296%5FMo%5FH3K4me1%5F5633%5FNR%2Ebed%2Egz", "H3K4me1_M0_BC17.bed.gz")
+gunzip("H3K4me1_M0_BC17.bed.gz")
+H3K4me1_M0_BC17 <- rtracklayer::import("H3K4me1_M0_BC17.bed", format = "BED")
+
+
+```
+### Macrophages
+
+```{r}
+options(timeout = 12000)
+
+#H3K4me4
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406297&format=file&file=GSM1406297%5FMf%5FH3K4me3%5F5634%5FNR%2Ebed%2Egz", "H3K4me4_MF_BC17.bed.gz")
+gunzip("H3K4me4_MF_BC17.bed.gz")
+H3K4me4_MF_BC17 <- rtracklayer::import("H3K4me4_MF_BC17.bed", format = "BED")
+
+
+#H3K27ac
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406298&format=file&file=GSM1406298%5FMf%5FH3K27ac%5F5635%5FNR%2Ebed%2Egz", "H3K27ac_MF_BC17.bed.gz")
+gunzip("H3K27ac_MF_BC17.bed.gz")
+H3K27ac_MF_BC17 <- rtracklayer::import("H3K27ac_MF_BC17.bed", format = "BED")
+
+
+#H3K3me1
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406299&format=file&file=GSM1406299%5FMf%5FH3K4me1%5F5636%5FNR%2Ebed%2Egz", "H3K4me1_MF_BC17.bed.gz")
+gunzip("H3K4me1_MF_BC17.bed.gz")
+H3K4me1_MF_BC17 <- rtracklayer::import("H3K4me1_MF_BC17.bed", format = "BED")
+
+```
+
+### LPS primed
+
+```{r}
+
+```
+
+### BG primed
+```{r}
+options(timeout = 12000)
+
+#H3K4me4
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406303&format=file&file=GSM1406303%5FBG%5FH3K4me3%5F5640%5FNR%2Ebed%2Egz", "H3K4me4_BG_BC17.bed.gz")
+gunzip("H3K4me4_BG_BC17.bed.gz")
+H3K4me4_BG_BC17 <- rtracklayer::import("H3K4me4_BG_BC17.bed", format = "BED")
+
+
+#H3K27ac
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406304&format=file&file=GSM1406304%5FBG%5FH3K27ac%5F5641%5FNR%2Ebed%2Egz", "H3K27ac_BG_BC17.bed.gz")
+gunzip("H3K27ac_BG_BC17.bed.gz")
+H3K27ac_BG_BC17 <- rtracklayer::import("H3K27ac_BG_BC17.bed", format = "BED")
+
+
+#H3K3me1
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406305&format=file&file=GSM1406305%5FBG%5FH3K4me1%5F5642%5FNR%2Ebed%2Egz", "H3K4me1_BG_BC17.bed.gz")
+gunzip("H3K4me1_BG_BC17.bed.gz")
+H3K4me1_BG_BC17 <- rtracklayer::import("H3K4me1_BG_BC17.bed", format = "BED")
+
+```
+
+
+### Looking at the data
+```{r}
+head(H3K4me1_BG_BC17)
+head(H3K4me1_M0_BC17)
+head(H3K4me1_MF_BC17)
+# we have seqnames = chromosomes, the ranges and the strand, aswell as name column, which we interpret as the signal intensity. 
+
+```
+
+
+Epigenetic dynamics (H3K4me1, H3K4me3, H3K27ac, DNase I accessibility) during monocyte differentiation into macrophages.
+
+Functional reprogramming of macrophages into trained (β-glucan-primed) or tolerized (LPS-exposed) states.
+
+Transcriptional networks and transcription factor (TF) motifs linked to immune training vs. tolerance.
+## What data will you be using?
+Data
+The original study used:
+
+Primary cells: Monocytes from 3–6 healthy donors, differentiated into:
+
+Naïve macrophages (Mf)
+
+LPS-tolerized macrophages (LPS-Mf)
+
+β-glucan-trained macrophages (BG-Mf).
+
+Epigenetic profiles:
+
+Histone modifications: H3K4me3 (promoters), H3K4me1 (enhancers), H3K27ac (active regulatory elements).
+
+DNase-seq for chromatin accessibility.
+
+## What are the analyses you wish to reproduce, or the questions you wish to answer?
+
+Analyses to Reproduce
+1. Epigenetic Clustering
+Identify ~8,000 dynamic chromatin regions (19 Mbp) during differentiation.
+
+Compare epigenetic signatures of LPS-Mf vs. BG-Mf:
+
+β-glucan training induces ~3,000 unique enhancers/promoters with H3K27ac.
+
+LPS tolerization activates ~500 distal regulatory regions.
+
+```{r}
+
+```
+
+2. Transcriptional Modules
+Apply polytomous modeling to group genes into expression modules (M1–M6) distinguishing:
+
+Metabolic pathways (e.g., glycolysis, cholesterol synthesis) in BG-Mf.
+
+Pro-inflammatory pathways sustained in LPS-Mf.
+
+3. TF Motif Enrichment
+Analyze DNase I hypersensitive sites for lineage-determining TFs (e.g., PU.1, C/EBPβ).
+
+Link TF motifs (e.g., cAMP-responsive elements) to β-glucan-specific enhancers.
+
+4. Functional Validation
+Test cAMP signaling inhibition to block trained immunity in vitro and in vivo.
+
+Validate key receptors (e.g., ADORA2B) and kinases (e.g., FGR) in trained macrophages.
+
+
+## Bibliography
+
+Mantovani, A. et al. (2002). Macrophage polarization: tumor-associated macrophages as a paradigm for polarized M2 mononuclear phagocytes. Trends in Immunology.
+
+Netea, M. G. et al. (2016). Trained immunity: A program of innate immune memory in health and disease. Nature Reviews Immunology.
+
+Hotchkiss, R. S. et al. (2013). Sepsis and septic shock. Critical Care.
