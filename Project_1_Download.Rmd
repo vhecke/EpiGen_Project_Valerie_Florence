@@ -1,0 +1,193 @@
+---
+title: "Project_Valerie_Florence_EpiGenetics"
+author: "Valerie Heckendorn and Florence Marti"
+date: "2025-05-07"
+output: html_document
+---
+
+# Introduction and background
+
+When monocytes—macrophage precursor cells found in the blood—migrate into tissue, they differentiate into macrophages and polarize into distinct functional phenotypes, most commonly referred to as either pro-inflammatory (M1) or anti-inflammatory (M2) macrophages. This polarization is primarily driven by the cytokine environment within the tissue. For example, interferon-γ (IFN-γ) and lipopolysaccharide (LPS) promote M1 polarization, while interleukin-4 (IL-4) and interleukin-13 (IL-13) favor M2 polarization. (Mantovani et al., 2002.)
+
+Infection or vaccination can induce a phenomenon known as "trained immunity," where monocytes and macrophages undergo epigenetic reprogramming that enhances their long-term responsiveness to microbial stimuli (Netea et al., 2016).
+On the other hand, during sepsis, monocytes can enter a state of immunoparalysis (also called endotoxin tolerance), a common complication of severe sepsis. In this state, monocytes exhibit a reduced capacity to produce pro-inflammatory cytokines (such as TNF-α and IL-6) in response to subsequent stimulation, while often maintaining or increasing anti-inflammatory cytokine production (such as IL-10) (Hotchkiss et al., 2013). Sepsis, and especially hospital acuired sepsis, is a life threatening condition which often arises due to ventilaor assisted pneumonia, bloostream infections from cathethers or intravenous lines, surgical site infections or urinary tract infections (Mary Garvey, 2024)
+
+Histone and DNA modifications have been hypothesized to play a role in regulating monocyte and macrophage phenotypes (16), but data are limited to a few genes and histone modifications.
+In the original publication, the authors compared histone modifications of LPS-primed monocytes mimicking sepsis and ß-glucan (BG)-primed monocytes, mimicking trained immunity. In our project, we aim to compare the histone marks of LPS- and BG-primed macrophages. Like in the original publication, we analysed the histone marks **H3K4me3** (promoters), **H3K4me1** (enhancers), and **M3K27ac** (active promoters and enhancers), and identified general changes in promoter and enhancer regions. We defined a set of *x* transcription, that were differentially expressed in the two groups and used these regions to determine if we could assign the LPS- or BG-primed macrophages to pro- or anti-inflammatory macrophage subgroups. 
+Furthermore we looked at the combination of histone marks to see promoter and enhancer regions that are active, which we identified as a combination of the histone methylation and the acetlyation. 
+
+
+## Experimental Setup
+Monocytes were pre-incubated either with cell culture medium (RPMI), β-glucan (5µg/mL) or with LPS (100ng/mL), for 24 hours in a total volume of 10 mL. After a wash-out, cells were cultured in RPMI supplemented with 10% human pool serum. Monocytes were collected at different time points (0 h and 6 d after treatment) and counted before further treatment for chromatin immunoprecipitation, RNA or DNaseI treatment. Different donor Buffycoats (BC) were used as independent replicates. Replicates were generated for all the profiles including ChIPseq,RNAseq and DNaseIseq.
+
+# Materials and Methods
+
+For the analyis comparing the changes in histone marks upon priming with either BG or LPS, the histone marks of the primed macrophages are compared to the controls, cultured in RPMI. 
+The filtered and preprocessed data is available to download (https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE58310), for the histone modifications, two different BC donors were available, BC8 and BC17. We chose to do the analysis using BC17 due to time and data storage restrictions. 
+
+Furthermore, the authors provided a list of human transcription factors (TFs), since this list contains 1581 human TFs, we created a more cohesive list of transcription factors to find an answer to our question whether the BG and LPS primed macrophages can be assigned to pro- or anti-inflammatory macrophage subgroups. For this, we created a list of 26 transcription factors that are known to be important in pro-inflammatory macrophages, and 15 transcription factors that are important in anti-inflammatory macrophages. The list was generated using artificial intelligence and cross referencing the sources provided (Li et al. 2018)
+
+
+
+
+# Setup and download
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence")
+```
+
+```{r, include = FALSE}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(ensembldb)
+  library(GenomicRanges)
+  library(epiwraps)
+  library(rtracklayer)
+  library(ggplot2)
+  library(magick)
+  library(R.utils) 
+  library(MASS)
+})
+```
+
+
+
+```{r, eval = FALSE, include = FALSE}
+#Downloading and unzipping the four files 
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE58310&format=file&file=GSE58310%5FBGall4Buffy891112merge%2Ehg19%2Ehotspot%2Etwopass%2Efdr0%2E01%2Ebed%2Egz","BG.bed.gz")
+
+gunzip("BG.bed.gz")
+BG <- rtracklayer::import("BG.bed", format = "BED")
+
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE58310&format=file&file=GSE58310%5FBuffy101112Day0merge%2Ehg19%2Ehotspot%2Etwopass%2Efdr0%2E01%2Ebed%2Egz", "buffy_hotspot.bed.gz")
+gunzip("buffy_hotspot.bed.gz")
+independent_replicated<- rtracklayer::import("buffy_hotspot.bed", format = "BED")
+
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE58310&format=file&file=GSE58310%5FLPSall4Buffy891112merge%2Ehg19%2Ehotspot%2Etwopass%2Efdr0%2E01%2Ebed%2Egz", "LPS.bed.gz")
+gunzip("LPS.bed.gz")
+LPS <- rtracklayer::import("LPS.bed", format = "BED")
+
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE58310&format=file&file=GSE58310%5FRPMIall4Buffy891112merge%2Ehg19%2Ehotspot%2Etwopass%2Efdr0%2E01%2Ebed%2Egz", "RPMI.bed.gz")
+gunzip("RPMI.bed.gz")
+control <- rtracklayer::import("RPMI.bed", format = "BED")
+
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?format=file&type=rnaseq_counts&file=Human.GRCh38.p13.annot.tsv.gz", "GRCh38annot.tsv.gz")
+gunzip("GRCh38annot.tsv.gz")
+
+download.file("https://ftp.ncbi.nlm.nih.gov/geo/series/GSE58nnn/GSE58310/suppl/GSE58310_GeneExpression.csv.gz","gene_expression.csv.gz")
+
+gunzip("gene_expression.csv.gz")
+gene_expression <- read.csv("gene_expression.csv")
+
+colnames(gene_expression) <- c("Gene_Id","Control_D0_1", "Control_D0_2", "Control_D0_3","Control_D0_4", "Control_D6_1", "Control_D6_2", "Control_D6_3","Control_D6_4", "LPS_D6_1", "LPS_D6_2", "LPS_D6_3","LPS_D6_4", "BG_D6_1", "BG_D6_2", "BG_D6_3","BG_D6_4")
+```
+
+## Downloading the histone modifications
+
+### Monocytes
+```{r}
+options(timeout = 12000)
+
+#H3K4me4
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406294&format=file&file=GSM1406294%5FMo%5FH3K4me3%5F5631%5FNR%2Ebed%2Egz", "H3K4me4_M0_BC17.bed.gz")
+gunzip("H3K4me4_M0_BC17.bed.gz")
+#H3K4me4_M0_BC17 <- rtracklayer::import("H3K4me4_M0_BC17.bed", format = "BED")
+
+
+#H3K27ac
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406295&format=file&file=GSM1406295%5FMo%5FH3K27ac%5F5632%5FNR%2Ebed%2Egz", "H3K27ac_M0_BC17.bed.gz")
+gunzip("H3K27ac_M0_BC17.bed.gz")
+#H3K27ac_M0_BC17 <- rtracklayer::import("H3K27ac_M0_BC17.bed", format = "BED")
+
+
+#H3K3me1
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406296&format=file&file=GSM1406296%5FMo%5FH3K4me1%5F5633%5FNR%2Ebed%2Egz", "H3K4me1_M0_BC17.bed.gz")
+gunzip("H3K4me1_M0_BC17.bed.gz")
+#H3K4me1_M0_BC17 <- rtracklayer::import("H3K4me1_M0_BC17.bed", format = "BED")
+
+
+```
+### Macrophages
+
+```{r}
+options(timeout = 12000)
+
+#H3K4me4
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406297&format=file&file=GSM1406297%5FMf%5FH3K4me3%5F5634%5FNR%2Ebed%2Egz", "H3K4me4_MF_BC17.bed.gz")
+gunzip("H3K4me4_MF_BC17.bed.gz")
+#H3K4me4_MF_BC17 <- rtracklayer::import("H3K4me4_MF_BC17.bed", format = "BED")
+
+
+#H3K27ac
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406298&format=file&file=GSM1406298%5FMf%5FH3K27ac%5F5635%5FNR%2Ebed%2Egz", "H3K27ac_MF_BC17.bed.gz")
+gunzip("H3K27ac_MF_BC17.bed.gz")
+#H3K27ac_MF_BC17 <- rtracklayer::import("H3K27ac_MF_BC17.bed", format = "BED")
+
+
+#H3K3me1
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406299&format=file&file=GSM1406299%5FMf%5FH3K4me1%5F5636%5FNR%2Ebed%2Egz", "H3K4me1_MF_BC17.bed.gz")
+gunzip("H3K4me1_MF_BC17.bed.gz")
+#H3K4me1_MF_BC17 <- rtracklayer::import("H3K4me1_MF_BC17.bed", format = "BED")
+
+```
+
+### LPS primed
+
+```{r}
+
+```
+
+### BG primed
+```{r}
+options(timeout = 12000)
+
+#H3K4me4
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406303&format=file&file=GSM1406303%5FBG%5FH3K4me3%5F5640%5FNR%2Ebed%2Egz", "H3K4me4_BG_BC17.bed.gz")
+gunzip("H3K4me4_BG_BC17.bed.gz")
+#H3K4me4_BG_BC17 <- rtracklayer::import("H3K4me4_BG_BC17.bed", format = "BED")
+
+
+#H3K27ac
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406304&format=file&file=GSM1406304%5FBG%5FH3K27ac%5F5641%5FNR%2Ebed%2Egz", "H3K27ac_BG_BC17.bed.gz")
+gunzip("H3K27ac_BG_BC17.bed.gz")
+#H3K27ac_BG_BC17 <- rtracklayer::import("H3K27ac_BG_BC17.bed", format = "BED")
+
+
+#H3K3me1
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406305&format=file&file=GSM1406305%5FBG%5FH3K4me1%5F5642%5FNR%2Ebed%2Egz", "H3K4me1_BG_BC17.bed.gz")
+gunzip("H3K4me1_BG_BC17.bed.gz")
+#H3K4me1_BG_BC17 <- rtracklayer::import("H3K4me1_BG_BC17.bed", format = "BED")
+
+```
+# Transcription Factors
+```{r}
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence/Data")
+```
+
+
+### Looking at the data
+```{r}
+head(H3K4me1_BG_BC17)
+head(H3K4me1_M0_BC17)
+head(H3K4me1_MF_BC17)
+# we have seqnames = chromosomes, the ranges and the strand, aswell as name column, which we interpret as the signal intensity. 
+
+```
+
+
+Epigenetic dynamics (H3K4me1, H3K4me3, H3K27ac, DNase I accessibility) during monocyte differentiation into macrophages.
+
+
+Transcriptional networks and transcription factor (TF) motifs linked to immune training vs. tolerance.
+
+## Bibliography
+
+Mantovani A, Sozzani S, Locati M, Allavena P, Sica A. Macrophage polarization: tumor-associated macrophages as a paradigm for polarized M2 mononuclear phagocytes. Trends Immunol. 2002 Nov;23(11):549-55. doi: 10.1016/s1471-4906(02)02302-5. PMID: 12401408.
+
+Netea MG, Joosten LA, Latz E, Mills KH, Natoli G, Stunnenberg HG, O'Neill LA, Xavier RJ. Trained immunity: A program of innate immune memory in health and disease. Science. 2016 Apr 22;352(6284):aaf1098. doi: 10.1126/science.aaf1098. Epub 2016 Apr 21. PMID: 27102489; PMCID: PMC5087274.
+
+Hotchkiss RS, Moldawer LL, Opal SM, Reinhart K, Turnbull IR, Vincent JL. Sepsis and septic shock. Nat Rev Dis Primers. 2016 Jun 30;2:16045. doi: 10.1038/nrdp.2016.45. PMID: 28117397; PMCID: PMC5538252.
+
+Garvey M. Hospital Acquired Sepsis, Disease Prevalence, and Recent Advances in Sepsis Mitigation. Pathogens. 2024 May 30;13(6):461. doi: 10.3390/pathogens13060461. PMID: 38921759; PMCID: PMC11206921.
+
+Li H, Jiang T, Li MQ, Zheng XL, Zhao GJ. Transcriptional Regulation of Macrophages Polarization by MicroRNAs. Front Immunol. 2018 May 28;9:1175. doi: 10.3389/fimmu.2018.01175. PMID: 29892301; PMCID: PMC5985397.

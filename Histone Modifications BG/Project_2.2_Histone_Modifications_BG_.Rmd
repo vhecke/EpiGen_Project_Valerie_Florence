@@ -1,0 +1,43 @@
+---
+title: "Project_2.2_Histone_Modifications_BG_"
+author: "Florence Marti"
+date: "2025-06-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence/Histone Modifications BG")
+```
+
+```{r, include = FALSE}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(ensembldb)
+  library(GenomicRanges)
+  library(epiwraps)
+  library(rtracklayer)
+  library(ggplot2)
+  library(magick)
+  library(R.utils) 
+  library(MASS)
+  library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+  library(org.Hs.eg.db)
+  library(AnnotationDbi)
+})
+```
+
+# Importing the downloaded data
+In this part I imported the peaks for the histone modifications H3K4me3, H3K4me1, and H3K27ac for monocytes (M0), macrophages (mf), and beta-glucan primed macrophages (BG). Additionally I imported the list of human TF's that play a role in macrophage polarisation.
+
+
+```{r}
+# Example peakfiles vector (adjust paths):
+peakfiles_M0 <- list.files("peaks", pattern = "\\M0.bed$", full.names = TRUE)
+names(peakfiles) <- gsub("\\.bed$", "", basename(peakfiles))
+
+peakfiles
+# Import peaks:
+peaks <- lapply(peakfiles, rtracklayer::import, format="BED")
+```
+
