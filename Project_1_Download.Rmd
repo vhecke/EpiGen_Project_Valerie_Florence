@@ -28,6 +28,77 @@ The filtered and preprocessed data is available to download (https://www.ncbi.nl
 Furthermore, the authors provided a list of human transcription factors (TFs), since this list contains 1581 human TFs, we created a more cohesive list of transcription factors to find an answer to our question whether the BG and LPS primed macrophages can be assigned to pro- or anti-inflammatory macrophage subgroups. For this, we created a list of 26 transcription factors that are known to be important in pro-inflammatory macrophages, and 15 transcription factors that are important in anti-inflammatory macrophages. The list was generated using artificial intelligence and cross referencing the sources provided (Li et al. 2018)
 
 
+For the analysis we used both the .bed files, as well as the .wig files. Converting the .wig to .bw files was done using the terminal and with the help of ChatGPT in the following manner: 
+
+```{r, eval = FALSE}
+The default interactive shell is now zsh.
+To update your account to use zsh, please run `chsh -s /bin/zsh`.
+For more details, please visit https://support.apple.com/kb/HT208050.
+Florence-Marti:~ florencemarti$ cd "/Users/florencemarti/Documents/GitHub/EpiGen_Project_Valerie_Florence/Histone Modifications BG"
+Florence-Marti:Histone Modifications BG florencemarti$ cd BigWig
+Florence-Marti:BigWig florencemarti$ curl -O https://hgdownload.soe.ucsc.edu/admin/exe/macOSX.x86_64/wigToBigWig
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:--  0     0    0     0    0     0      0      0 --:--:-- --:--:--  0     0    0     0    0     0      0      0 --:--:--  0:00:01  0     0    0     0    0     0      0      0 --:--:--  0:00:02  1 8210k    1  117k    0     0  37835      0  0:03:42  0:00:03 24 8210k   24 2031k    0     0   486k      0  0:00:16  0:00:04 50 8210k   50 4109k    0     0   778k      0  0:00:10  0:00:05 76 8210k   76 6242k    0     0   997k      0  0:00:08  0:00:06 95 8210k   95 7828k    0     0  1082k      0  0:00:07  0:00:07100 8210k  100 8210k    0     0  1084k      0  0:00:07  0:00:07 --:--:-- 1837k
+Florence-Marti:BigWig florencemarti$ chmod +x wigToBigWig
+Florence-Marti:BigWig florencemarti$ curl -O https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.chrom.sizes
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:--100  1971  100  1971    0     0   3988      0 --:--:-- --:--:-- --:--:--  3997
+Florence-Marti:BigWig florencemarti$ nano convert_wigs.sh
+Florence-Marti:BigWig florencemarti$ chmod +x convert_wigs.sh
+Florence-Marti:BigWig florencemarti$ ./convert_wigs.sh
+Converting ./wig_files/H3K27ac_BG.wig to ./bigwig_files/H3K27ac_BG.bw
+Converting ./wig_files/H3K27ac_M0.wig to ./bigwig_files/H3K27ac_M0.bw
+line 22203217 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195220
+line 22203218 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195230
+line 22203219 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195240
+line 22203220 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195250
+line 22203221 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195260
+line 22203222 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195270
+line 22203223 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195280
+line 22203224 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195290
+line 22203225 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195300
+line 22203226 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195310
+line 22203227 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195320
+line 22203228 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195330
+line 22203229 of ./wig_files/H3K27ac_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195340
+Converting ./wig_files/H3K27ac_MF.wig to ./bigwig_files/H3K27ac_MF.bw
+Converting ./wig_files/H3K4me1_BG.wig to ./bigwig_files/H3K4me1_BG.bw
+Converting ./wig_files/H3K4me1_M0.wig to ./bigwig_files/H3K4me1_M0.bw
+line 37037655 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195220
+line 37037656 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195230
+line 37037657 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195240
+line 37037658 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195250
+line 37037659 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195260
+line 37037660 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195270
+line 37037661 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195280
+line 37037662 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195290
+line 37037663 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195300
+line 37037664 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195310
+line 37037665 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195320
+line 37037666 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195330
+line 37037667 of ./wig_files/H3K4me1_M0.wig: chromosome chr17 has 81195210 bases, but item ends at 81195340
+Converting ./wig_files/H3K4me1_MF.wig to ./bigwig_files/H3K4me1_MF.bw
+line 29484841 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195220
+line 29484842 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195230
+line 29484843 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195240
+line 29484844 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195250
+line 29484845 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195260
+line 29484846 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195270
+line 29484847 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195280
+line 29484848 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195290
+line 29484849 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195300
+line 29484850 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195310
+line 29484851 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195320
+line 29484852 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195330
+line 29484853 of ./wig_files/H3K4me1_MF.wig: chromosome chr17 has 81195210 bases, but item ends at 81195340
+Converting ./wig_files/H3K4me3_BG.wig to ./bigwig_files/H3K4me3_BG.bw
+Converting ./wig_files/H3K4me3_M0.wig to ./bigwig_files/H3K4me3_M0.bw
+Converting ./wig_files/H3K4me3_MF.wig to ./bigwig_files/H3K4me3_MF.bw
+Florence-Marti:BigWig florencemarti$ 
+
+```
 
 
 # Setup and download
@@ -88,10 +159,10 @@ colnames(gene_expression) <- c("Gene_Id","Control_D0_1", "Control_D0_2", "Contro
 ```{r}
 options(timeout = 12000)
 
-#H3K4me4
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406294&format=file&file=GSM1406294%5FMo%5FH3K4me3%5F5631%5FNR%2Ebed%2Egz", "H3K4me4_M0_BC17.bed.gz")
-gunzip("H3K4me4_M0_BC17.bed.gz")
-#H3K4me4_M0_BC17 <- rtracklayer::import("H3K4me4_M0_BC17.bed", format = "BED")
+#H3K4me3
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406294&format=file&file=GSM1406294%5FMo%5FH3K4me3%5F5631%5FNR%2Ebed%2Egz", "H3K4me3_M0_BC17.bed.gz")
+gunzip("H3K4me3_M0_BC17.bed.gz")
+#H3K4me3_M0_BC17 <- rtracklayer::import("H3K4me3_M0_BC17.bed", format = "BED")
 
 
 #H3K27ac
@@ -112,10 +183,10 @@ gunzip("H3K4me1_M0_BC17.bed.gz")
 ```{r}
 options(timeout = 12000)
 
-#H3K4me4
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406297&format=file&file=GSM1406297%5FMf%5FH3K4me3%5F5634%5FNR%2Ebed%2Egz", "H3K4me4_MF_BC17.bed.gz")
-gunzip("H3K4me4_MF_BC17.bed.gz")
-#H3K4me4_MF_BC17 <- rtracklayer::import("H3K4me4_MF_BC17.bed", format = "BED")
+#H3K4me3
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406297&format=file&file=GSM1406297%5FMf%5FH3K4me3%5F5634%5FNR%2Ebed%2Egz", "H3K4me3_MF_BC17.bed.gz")
+gunzip("H3K4me3_MF_BC17.bed.gz")
+#H3K4me3_MF_BC17 <- rtracklayer::import("H3K4me3_MF_BC17.bed", format = "BED")
 
 
 #H3K27ac
@@ -141,10 +212,10 @@ gunzip("H3K4me1_MF_BC17.bed.gz")
 ```{r}
 options(timeout = 12000)
 
-#H3K4me4
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406303&format=file&file=GSM1406303%5FBG%5FH3K4me3%5F5640%5FNR%2Ebed%2Egz", "H3K4me4_BG_BC17.bed.gz")
-gunzip("H3K4me4_BG_BC17.bed.gz")
-#H3K4me4_BG_BC17 <- rtracklayer::import("H3K4me4_BG_BC17.bed", format = "BED")
+#H3K4me3
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406303&format=file&file=GSM1406303%5FBG%5FH3K4me3%5F5640%5FNR%2Ebed%2Egz", "H3K4me3_BG_BC17.bed.gz")
+gunzip("H3K4me3_BG_BC17.bed.gz")
+#H3K4me3_BG_BC17 <- rtracklayer::import("H3K4me3_BG_BC17.bed", format = "BED")
 
 
 #H3K27ac
@@ -157,6 +228,84 @@ gunzip("H3K27ac_BG_BC17.bed.gz")
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406305&format=file&file=GSM1406305%5FBG%5FH3K4me1%5F5642%5FNR%2Ebed%2Egz", "H3K4me1_BG_BC17.bed.gz")
 gunzip("H3K4me1_BG_BC17.bed.gz")
 #H3K4me1_BG_BC17 <- rtracklayer::import("H3K4me1_BG_BC17.bed", format = "BED")
+
+```
+# Downloading bigwig files
+
+
+### Monocytes
+```{r}
+options(timeout = 12000)
+
+#H3K4me3
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406294&format=file&file=GSM1406294%5FMo%5FH3K4me3%5F5631%5FNR%2Ewig%2Egz", "H3K4me3_M0.wig.gz")
+gunzip("H3K4me3_M0.wig.gz")
+#H3K4me3_M0_BC17 <- rtracklayer::import("H3K4me3_M0_BC17.bed", format = "BED")
+
+
+#H3K27ac
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406295&format=file&file=GSM1406295%5FMo%5FH3K27ac%5F5632%5FNR%2Ewig%2Egz", "H3K27ac_M0.wig.gz")
+gunzip("H3K27ac_M0.wig.gz")
+#H3K27ac_M0_BC17 <- rtracklayer::import("H3K27ac_M0.wig", format = "BED")
+
+
+#H3K3me1
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406296&format=file&file=GSM1406296%5FMo%5FH3K4me1%5F5633%5FNR%2Ewig%2Egz", "H3K4me1_M0.wig.gz")
+gunzip("H3K4me1_M0.wig.gz")
+#H3K4me1_M0_BC17 <- rtracklayer::import("H3K4me1_M0.wig", format = "BED")
+
+
+```
+### Macrophages
+
+```{r}
+options(timeout = 12000)
+
+#H3K4me3
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406297&format=file&file=GSM1406297%5FMf%5FH3K4me3%5F5634%5FNR%2Ewig%2Egz", "H3K4me3_MF.wig.gz")
+gunzip("H3K4me3_MF.wig.gz")
+#H3K4me3_MF_BC17 <- rtracklayer::import("H3K4me3_MF_BC17.bed", format = "BED")
+
+
+#H3K27ac
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406298&format=file&file=GSM1406298%5FMf%5FH3K27ac%5F5635%5FNR%2Ewig%2Egz", "H3K27ac_MF.wig.gz")
+gunzip("H3K27ac_MF.wig.gz")
+#H3K27ac_MF_BC17 <- rtracklayer::import("H3K27ac_MF.wig", format = "BED")
+
+
+#H3K3me1
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406299&format=file&file=GSM1406299%5FMf%5FH3K4me1%5F5636%5FNR%2Ewig%2Egz", "H3K4me1_MF.wig.gz")
+gunzip("H3K4me1_MF.wig.gz")
+#H3K4me1_MF_BC17 <- rtracklayer::import("H3K4me1_MF.wig", format = "BED")
+
+```
+
+### LPS primed
+
+```{r}
+
+```
+
+### BG primed
+```{r}
+options(timeout = 12000)
+
+#H3K4me3
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406303&format=file&file=GSM1406303%5FBG%5FH3K4me3%5F5640%5FNR%2Ewig%2Egz", "H3K4me3_BG.wig.gz")
+gunzip("H3K4me3_BG.wig.gz")
+#H3K4me3_BG_BC17 <- rtracklayer::import("H3K4me3_BG.wig", format = "BED")
+
+
+#H3K27ac
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406304&format=file&file=GSM1406304%5FBG%5FH3K27ac%5F5641%5FNR%2Ewig%2Egz", "H3K27ac_BG.wig.gz")
+gunzip("H3K27ac_BG.wig.gz")
+#H3K27ac_BG_BC17 <- rtracklayer::import("H3K27ac_BG.wig", format = "BED")
+
+
+#H3K3me1
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1406305&format=file&file=GSM1406305%5FBG%5FH3K4me1%5F5642%5FNR%2Ewig%2Egz", "H3K4me1_BG.wig.gz")
+gunzip("H3K4me1_BG.wig.gz")
+#H3K4me1_BG_BC17 <- rtracklayer::import("H3K4me1_BG.wig", format = "BED")
 
 ```
 # Transcription Factors
