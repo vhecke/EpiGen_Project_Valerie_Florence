@@ -30,14 +30,46 @@ suppressPackageStartupMessages({
 # Importing the downloaded data
 In this part I imported the peaks for the histone modifications H3K4me3, H3K4me1, and H3K27ac for monocytes (M0), macrophages (mf), and beta-glucan primed macrophages (BG). Additionally I imported the list of human TF's that play a role in macrophage polarisation.
 
-
+For this part of the analysis, we use the peaks
 ```{r}
-# Example peakfiles vector (adjust paths):
 peakfiles_M0 <- list.files("peaks", pattern = "\\M0.bed$", full.names = TRUE)
+names(peakfiles_M0) <- gsub("\\.bed$", "", basename(peakfiles_M0))
+
+peakfiles_M0
+# Import peaks:
+peaks_M0 <- lapply(peakfiles_M0, rtracklayer::import, format="BED")
+
+peakfiles_MF <- list.files("peaks", pattern = "\\MF.bed$", full.names = TRUE)
+names(peakfiles_MF) <- gsub("\\.bed$", "", basename(peakfiles_MF))
+
+peakfiles_MF
+# Import peaks:
+peaks_MF <- lapply(peakfiles_MF, rtracklayer::import, format="BED")
+
+peakfiles_BG <- list.files("peaks", pattern = "\\BG.bed$", full.names = TRUE)
+names(peakfiles_BG) <- gsub("\\.bed$", "", basename(peakfiles_BG))
+
+peakfiles_BG
+# Import peaks:
+peaks_BG <- lapply(peakfiles_BG, rtracklayer::import, format="BED")
+
+peakfiles <- list.files("peaks", pattern = "\\.bed$", full.names = TRUE)
 names(peakfiles) <- gsub("\\.bed$", "", basename(peakfiles))
 
 peakfiles
 # Import peaks:
 peaks <- lapply(peakfiles, rtracklayer::import, format="BED")
+```
+```{r}
+pro_inflammatory <- c("RELA", "RELB", "REL", "NFKB1", "NFKB2", "FOS", "JUN", "STAT1", "STAT2", 
+                     "STAT3", "STAT4", "STAT5A", "STAT5B", "IRF5", "IRF8", "IRF1",
+                     "IRF3", "CEBPA", "CEBPD", "SPI1", "KLF6", "HIF1A", "NOTCH1", "BRD4")
+
+anti_inflammatory <- c("STAT6", "PPARG", "KLF4", "MAFB", "IRF4", "KDM6B", "MYC", "NR4A1", 
+                      "BCL6", "CREB1", "RXRA", "FOXO1", "SP1", "GATA3", "SMAD3")
+```
+
+```{r}
+
 ```
 
