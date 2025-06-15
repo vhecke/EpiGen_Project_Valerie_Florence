@@ -1,0 +1,127 @@
+---
+title: "Project_2.2_Histone_Modifications_BG_"
+author: "Florence Marti"
+date: "2025-06-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence/Histone Modifications Memory")
+```
+
+```{r, include = FALSE}
+if (!requireNamespace("valr", quietly = TRUE)) {
+  install.packages("valr")
+}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(ensembldb)
+  library(GenomicRanges)
+  library(epiwraps)
+  library(rtracklayer)
+  library(ggplot2)
+  library(magick)
+  library(R.utils) 
+  library(MASS)
+  library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+  library(org.Hs.eg.db)
+  library(AnnotationDbi)
+  library(valr)
+})
+```
+
+# Importing the downloaded data
+In this part I imported the peaks for the histone modifications H3K4me3, H3K4me1, and H3K27ac for monocytes (M0), macrophages (mf), and beta-glucan primed macrophages (BG). Additionally I imported the list of human TF's that play a role in macrophage polarisation.
+
+For this part of the analysis, we use the peaks
+
+```{r}
+head(read.table("peaks/NormRC_H3K27ac_wID.txt", header = TRUE))
+
+```
+
+```{r}
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence/Histone Modifications Memory/peaks")
+
+# Define filenames manually
+mods <- c("H3K27ac", "H3K27me3", "H3K4me3", "H3K9me3")
+gr_list <- list()
+
+# Function to read files into GRanges
+read_granges <- function(file) {
+  df <- read.table(file, header = TRUE)
+  GRanges(seqnames = df$Chr, ranges = IRanges(start = df$Start, end = df$End))
+}
+
+# Load Naive and Memory GRanges for each modification
+for (mod in mods) {
+  naive_file <- paste0("NormRC_", mod, "_wID.txt")
+  memory_file <- paste0("NormRC_", mod, "_wID mem.txt")
+  
+  gr_list[[paste0("n_", mod)]] <- read_granges(naive_file)
+  gr_list[[paste0("m_", mod)]] <- read_granges(memory_file)
+}
+
+# List for naive only
+gr_list_naive <- gr_list[grep("^n_", names(gr_list))]
+
+# List for memory only
+gr_list_memory <- gr_list[grep("^m_", names(gr_list))]
+
+# List for combined (all)
+gr_list_combined <- gr_list
+
+regionUpset(gr_list_naive)
+
+```
+
+
+```{r}
+peakfiles_naive <- list.files("peaks", pattern = "naive_peaks.bed$", full.names = TRUE)
+names(peakfiles_naive) <- gsub("\\.bed$", "", basename(peakfiles_naive))
+peaks_naive <- lapply(peakfiles_naive, rtracklayer::import, format="BED")
+
+peaks_naive
+
+peakfiles_memory <- list.files("peaks", pattern = "memory_peaks.bed$", full.names = TRUE)
+names(peakfiles_memory) <- gsub("\\.bed$", "", basename(peakfiles_memory))
+peaks_memory <- lapply(peakfiles_memory, rtracklayer::import, format="BED")
+
+peakfiles <- list.files("peaks", pattern = "\\.bed$", full.names = TRUE)
+names(peakfiles) <- gsub("\\.bed$", "", basename(peakfiles))
+peaks <- lapply(peakfiles, rtracklayer::import, format="BED")
+
+```
+
+## Finding the mono-, bi-, trivalent domains in the different groups using region upset
+```{r}
+Domains <- regionUpset(peaks, nsets = length(peaks))
+```
+
+
+```{r plot, fig.cap= "Upset plot the peaks form naive and memory T cells. In the available files, there are not"}
+Domains
+
+```
+Just like in the original paper, we termed the coactivation of x a y ü, the coactivation of y and z ä, and the coactivation of z and y ö. if all three domains are activated, we termed them aaaaaaaaaah. 
+
+
+```{r}
+bwfiles_naive <- list.files("bigwig_files", pattern = "\\30.bw", full.names = TRUE)
+# then give them meaningful names
+names(bwfiles_naive) <- gsub("\\.bw$","",basename(bwfiles_naive))
+
+reduce(unlist(GRangesList(peaks_naive))
+
+sm_n <- signal2Matrix(bwfiles_naive, regions = reduce(unlist(GRangesList(peaks_naive))), w = 40)
+```
+```{r}
+bwfiles_memory <- list.files("bigwig_files", pattern = "\\memory.bw", full.names = TRUE)
+# then give them meaningful names
+names(bwfiles_memory) <- gsub("\\.bw$","",basename(bwfiles_memory))
+
+reduce(unlist(GRangesList(peaks_memory))
+
+sm_m <- signal2Matrix(bwfiles_memory, regions = reduce(unlist(GRangesList(peaks_memory))), w = 40)
+```
