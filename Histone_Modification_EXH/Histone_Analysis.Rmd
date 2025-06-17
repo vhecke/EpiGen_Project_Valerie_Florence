@@ -1,0 +1,214 @@
+---
+title: "Histone Analysis"
+author: "Valerie Heckendorn"
+date: "2025-06-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include = FALSE}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(ensembldb)
+  library(GenomicRanges)
+  library(epiwraps)
+  library(rtracklayer)
+  library(ggplot2)
+  library(magick)
+  library(R.utils) 
+  library(MASS)
+  library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+  library(org.Hs.eg.db)
+  library(AnnotationDbi)
+  library(valr)
+  library(EnrichedHeatmap)
+})
+```
+
+# Importing the downloaded data
+The histone modifications were shared on GEO Accession Viewer as TXT files.
+
+For the analysis, we split the workload in comparing naive and memory cells (part 1), and naive and exhausted cells (part 2). 
+
+
+
+```{r}
+head(read.table("peaks/NormRC_H3K27ac_wID.txt", header = TRUE))
+```
+
+```{r}
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence/Histone_Modification_EXH/peaks")
+
+# H3K27ac
+H3K27ac_df <- read.table("peaks/NormRC_H3K27ac_wID.txt", header = TRUE)
+
+# H3K27me3
+H3K27me3_df <- read.table("peaks/NormRC_H3K27me3_wID.txt", header = TRUE)
+
+# H3K4me3
+H3K4me3_df <- read.table("peaks/NormRC_H3K4me3_wID.txt", header = TRUE)
+
+# H3K9me3
+H3K9me3_df <- read.table("peaks/NormRC_H3K9me3_wID.txt", header = TRUE)
+
+# Converting to GRanges
+
+H3K27ac_gr <- GRanges(seqnames = H3K27ac_df$peakN, ranges = IRanges(start = H3K27ac_df$Start, end = H3K27ac_df$End))
+H3K27me3_gr <- GRanges(seqnames = H3K27me3_df$Chr, ranges = IRanges(start = H3K27me3_df$Start, end = H3K27me3_df$End))
+H3K4me3_gr <- GRanges(seqnames = H3K4me3_df$Chr, ranges = IRanges(start = H3K4me3_df$Start, end = H3K4me3_df$End))
+H3K9me3_gr <- GRanges(seqnames = H3K9me3_df$Chr, ranges = IRanges(start = H3K9me3_df$Start, end = H3K9me3_df$End))
+
+# Create GRanges List
+
+peaks <- GRangesList(
+  H3K27ac = H3K27ac_gr,
+  H3K27me3 = H3K27me3_gr,
+  H3K4me3 = H3K4me3_gr,
+  H3K9me3 = H3K9me3_gr
+)
+
+```
+
+# We want to visualize changes in histone modifications between the different cells (here: part 2, naive vs. exhausted). The intensity is defined as the mean expression of the histones over the 4 reps. We then want to plot only regions with significant changes, which we defined as log2 fold change >0.1 or <-0.1.
+
+# H3K27ac
+```{r}
+#mean intensity (all reps) per cell type
+H3K27ac_new <- H3K27ac_df[, -c(1:6)]
+
+mean_naive_H3K27ac <- rowMeans(H3K27ac_new[, 1:4])   # naive cols
+mean_exh_H3K27ac <- rowMeans(H3K27ac_new[, 13:16])  # memory cols
+
+# Compute log2 fold change (memory / naive), add small pseudocount to avoid log2(0)
+pseudocount <- 1e-6
+log2FC_H3K27ac <- log2((mean_exh_H3K27ac + pseudocount) / (mean_naive_H3K27ac + pseudocount))
+
+# Filter rows with log2FC > 0.1 (you can add abs(log2FC) > 0.1 if you want both directions)
+sig_rows_H3K27ac <- which(abs(log2FC_H3K27ac) > 0.1)
+
+# Subset log2FC vector to significant regions
+log2FC_sig <- log2FC_H3K27ac[sig_rows_H3K27ac]
+
+# Convert to 1-column matrix
+log2FC_matrix <- matrix(log2FC_sig, ncol = 1)
+rownames(log2FC_matrix) <- paste0("peak_", sig_rows_H3K27ac)
+colnames(log2FC_matrix) <- "log2FC"
+
+# Plot heatmap with fixed scale from -2 to 2
+pheatmap(
+  log2FC_matrix,
+  main = "H3K27ac log2 Fold Change (Exhausted / Naive)",
+  color = colorRampPalette(c("blue", "white", "red"))(100),
+  breaks = seq(-2, 2, length.out = 101),
+  cluster_rows = TRUE,
+  cluster_cols = FALSE,
+  show_rownames = FALSE
+)
+```
+# H3K27me3
+```{r}
+#mean intensity (all reps) per cell type
+H3K27me3_new <- H3K27me3_df[, -c(1:6)]
+
+mean_naive_H3K27me3 <- rowMeans(H3K27me3_new[, 1:4])   # naive cols
+mean_exh_H3K27me3 <- rowMeans(H3K27me3_new[, 13:16])  # memory cols
+
+# Compute log2 fold change (memory / naive), add small pseudocount to avoid log2(0)
+pseudocount <- 1e-6
+log2FC_H3K27me3 <- log2((mean_exh_H3K27me3 + pseudocount) / (mean_naive_H3K27me3 + pseudocount))
+
+# Filter rows with log2FC > 0.1 (you can add abs(log2FC) > 0.1 if you want both directions)
+sig_rows_H3K27me3 <- which(abs(log2FC_H3K27me3) > 0.1)
+
+# Subset log2FC vector to significant regions
+log2FC_sig <- log2FC_H3K27me3[sig_rows_H3K27me3]
+
+# Convert to 1-column matrix
+log2FC_matrix <- matrix(log2FC_sig, ncol = 1)
+rownames(log2FC_matrix) <- paste0("peak_", sig_rows_H3K27me3)
+colnames(log2FC_matrix) <- "log2FC"
+
+# Plot heatmap with fixed scale from -2 to 2
+pheatmap(
+  log2FC_matrix,
+  main = "H3K27me3 log2 Fold Change (Exhausted / Naive)",
+  color = colorRampPalette(c("blue", "white", "red"))(100),
+  breaks = seq(-2, 2, length.out = 101),
+  cluster_rows = TRUE,
+  cluster_cols = FALSE,
+  show_rownames = FALSE
+)
+```
+
+#H3K4me
+```{r}
+#mean intensity (all reps) per cell type
+H3K4me3_new <- H3K4me3_df[, -c(1:6)]
+
+mean_naive_H3K4me3 <- rowMeans(H3K4me3_new[, 1:4])   # naive cols
+mean_exh_H3K4me3 <- rowMeans(H3K4me3_new[, 13:16])  # memory cols
+
+# Compute log2 fold change (memory / naive), add small pseudocount to avoid log2(0)
+pseudocount <- 1e-6
+log2FC_H3K4me3 <- log2((mean_exh_H3K4me3 + pseudocount) / (mean_naive_H3K4me3 + pseudocount))
+
+# Filter rows with log2FC > 0.1 (you can add abs(log2FC) > 0.1 if you want both directions)
+sig_rows_H3K4me3 <- which(abs(log2FC_H3K4me3) > 0.1)
+
+# Subset log2FC vector to significant regions
+log2FC_sig <- log2FC_H3K4me3[sig_rows_H3K4me3]
+
+# Convert to 1-column matrix
+log2FC_matrix <- matrix(log2FC_sig, ncol = 1)
+rownames(log2FC_matrix) <- paste0("peak_", sig_rows_H3K4me3)
+colnames(log2FC_matrix) <- "log2FC"
+
+# Plot heatmap with fixed scale from -2 to 2
+pheatmap(
+  log2FC_matrix,
+  main = "H3K4me3 log2 Fold Change (Exhausted / Naive)",
+  color = colorRampPalette(c("blue", "white", "red"))(100),
+  breaks = seq(-2, 2, length.out = 101),
+  cluster_rows = TRUE,
+  cluster_cols = FALSE,
+  show_rownames = FALSE
+)
+```
+
+#H3K9me3
+```{r}
+#mean intensity (all reps) per cell type
+H3K9me3_new <- H3K9me3_df[, -c(1:6)]
+
+mean_naive_H3K9me3 <- rowMeans(H3K9me3_new[, 1:4])   # naive cols
+mean_exh_H3K9me3 <- rowMeans(H3K9me3_new[, 13:16])  # memory cols
+
+# Compute log2 fold change (memory / naive), add small pseudocount to avoid log2(0)
+pseudocount <- 1e-6
+log2FC_H3K9me3 <- log2((mean_exh_H3K9me3 + pseudocount) / (mean_naive_H3K9me3 + pseudocount))
+
+# Filter rows with log2FC > 0.1 (you can add abs(log2FC) > 0.1 if you want both directions)
+sig_rows_H3K9me3 <- which(abs(log2FC_H3K9me3) > 0.1)
+
+# Subset log2FC vector to significant regions
+log2FC_sig <- log2FC_H3K9me3[sig_rows_H3K9me3]
+
+# Convert to 1-column matrix
+log2FC_matrix <- matrix(log2FC_sig, ncol = 1)
+rownames(log2FC_matrix) <- paste0("peak_", sig_rows_H3K9me3)
+colnames(log2FC_matrix) <- "log2FC"
+
+# Plot heatmap with fixed scale from -2 to 2
+pheatmap(
+  log2FC_matrix,
+  main = "H3K9me3 log2 Fold Change (Exhausted / Naive)",
+  color = colorRampPalette(c("blue", "white", "red"))(100),
+  breaks = seq(-2, 2, length.out = 101),
+  cluster_rows = TRUE,
+  cluster_cols = FALSE,
+  show_rownames = FALSE
+)
+```
