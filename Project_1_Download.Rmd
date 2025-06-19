@@ -2,16 +2,12 @@
 title: "Project_Valerie_Florence_EpiGenetics"
 author: "Valerie Heckendorn and Florence Marti"
 date: "2025-05-07"
-output: html_document
+output: 
+  html_document:
+    citation_package: natbib
+bibliography: references.bib
 ---
 
-# Introduction and background
-
-The publication shared the data and compared the naive, memory and exhausted T cells at day 30 and day 32. They also provided 4 replicates of each timepoint, for simplicity reasons, we chose to download rep x for the analysis and then if time allows to reanalyse with another rep.
-
-We downloaded the 4 histone modifications they provided for all 3 cell types, all two days, resulting in 24
-
-# Setup and download
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence")
@@ -32,10 +28,22 @@ suppressPackageStartupMessages({
 ```
 
 
+# Introduction and background
+Based on a mutual interest in immune cells, and data availability, we decided to partially redo the analysis of the paper "Deciphering the role of Histone Modifications in Memory and Exhausted CD8 T Cells" by Huang et al. The paper was published on May 19th 2025 in Scientific Reports. [@Huang2025]
+
+T Lymphocytes (T Cells) are immune cells found in the blood. They are the cell component of the adaptive immune system and are responsible for mediating cell-based immune responses. Naïve T cells are developed in the thymus and can be grouped into many subgroups, amongst them CD8+ cells, which this analysis focuses on. Upon recognition of antigens by receptors on the cell surface, naïve CD8+ T cells (T$_{naive}$), further referenced naïve T cells, undergo activation, clonal expansion, and differentiation into mature T cells. Once matured, T cells can take up their intended function of killing infected cells, producing cytokines, and regulating immune responses. A small portion of mature T cells differentiates into memory T cells (T$_{Mem}$), upon antigen re-exposure, they show rapid effector function and provide the host long term protection. [@Sun2023]
+
+When mature T cells are exposed to chronic infections and cancer, T cells can enter a state of exhaustion, and are no longer equally functional as before. Exhausted T cells (T$_{Exh}$) differ from mature T Cells or T$_{Mem}$ on a transcriptomic and epigenetic level. [@Wherry2011][@Wherry2010]
+
+Compared to T$_{Mem}$, T$_{Exh}$ show a unique open chromatin landscape, which was explored by comparing histone modification of T$_{naive}$, T$_{Mem}$, and T$_{Exh}$. The four histone modifications that were analysed are H3K3
+
+
+We downloaded the 4 histone modifications they provided for all 3 cell types, all two days, resulting in 24
+
+
+
 ## Peaks and Histone modifications
 ```{r}
-setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence/Histone Modifications Memory")
-
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K27ac%5FwID%2Etxt%2Egz", "peaks/NormRC_H3K27ac_wID.txt.gz")
 gunzip("peaks/NormRC_H3K27ac_wID.txt.gz")
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K27me3%5FwID%2Etxt%2Egz", "peaks/NormRC_H3K27me3_wID.txt.gz")
@@ -124,6 +132,7 @@ H3K4me3_EX <- rtracklayer::import("H3K4me3_EX.bw", format = "bw")
 #H3K9me3, Day32, rep1
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699139&format=file&file=GSM8699139%5FCl13%5FP14%5FDay32%5FH3K9me3%5FRep1%5FS5%2Escale%2Ebw", "H3K9me3_EX.bw")
 H3K9me3_EX <- rtracklayer::import("H3K9me3_EX.bw", format = "bw")
+
 ```
 
 
