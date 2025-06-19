@@ -52,6 +52,7 @@ download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=f
 gunzip("peaks/NormRC_H3K4me3_wID.txt.gz")
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K9me3%5FwID%2Etxt%2Egz", "peaks/NormRC_H3K9me3_wID.txt.gz")
 gunzip("peaks/NormRC_H3K9me3_wID.txt.gz")
+
 ```
 
 The peaks and histone modifications were not published under the same accession number.
@@ -114,6 +115,7 @@ gunzip("H3K9me3_memory.bw.gz")
 ### T exh
 
 ```{r}
+options(timeout = 12000)
 
 #H3K27ac, Day32, rep1
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699091&format=file&file=GSM8699091%5FCl13%5FP14%5FDay32%5FH3K27ac%5FRep1%5FS13%2Escale%2Ebw", "H3K27ac_EX.bw")
@@ -130,7 +132,7 @@ H3K4me3_EX <- rtracklayer::import("H3K4me3_EX.bw", format = "bw")
 #H3K9me3, Day32, rep1
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699139&format=file&file=GSM8699139%5FCl13%5FP14%5FDay32%5FH3K9me3%5FRep1%5FS5%2Escale%2Ebw", "H3K9me3_EX.bw")
 H3K9me3_EX <- rtracklayer::import("H3K9me3_EX.bw", format = "bw")
-```
+
 ```
 
 

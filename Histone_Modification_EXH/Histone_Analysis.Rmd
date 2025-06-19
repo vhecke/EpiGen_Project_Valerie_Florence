@@ -1,0 +1,208 @@
+---
+title: "Histone Analysis"
+author: "Valerie Heckendorn"
+date: "2025-06-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)¨
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence/Histone_Modification_EXH/peaks")
+```
+
+```{r, include = FALSE}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(ensembldb)
+  library(GenomicRanges)
+  library(epiwraps)
+  library(rtracklayer)
+  library(ggplot2)
+  library(magick)
+  library(R.utils) 
+  library(MASS)
+  library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+  library(org.Hs.eg.db)
+  library(AnnotationDbi)
+  library(valr)
+  library(EnrichedHeatmap)
+})
+```
+
+# Importing the downloaded data
+The histone modifications were shared on GEO Accession Viewer as TXT files.
+
+For the analysis, we split the workload in comparing naive and memory cells (part 1), and naive and exhausted cells (part 2). 
+
+
+
+```{r}
+head(read.table("peaks/NormRC_H3K27ac_wID.txt", header = TRUE))
+```
+
+```{r}
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence/Histone_Modification_EXH/peaks")
+
+# H3K27ac
+H3K27ac_df <- read.table("peaks/NormRC_H3K27ac_wID.txt", header = TRUE)
+
+# H3K27me3
+H3K27me3_df <- read.table("peaks/NormRC_H3K27me3_wID.txt", header = TRUE)
+
+# H3K4me3
+H3K4me3_df <- read.table("peaks/NormRC_H3K4me3_wID.txt", header = TRUE)
+
+# H3K9me3
+H3K9me3_df <- read.table("peaks/NormRC_H3K9me3_wID.txt", header = TRUE)
+
+# Converting to GRanges
+
+H3K27ac_gr <- GRanges(seqnames = H3K27ac_df$peakN, ranges = IRanges(start = H3K27ac_df$Start, end = H3K27ac_df$End))
+H3K27me3_gr <- GRanges(seqnames = H3K27me3_df$Chr, ranges = IRanges(start = H3K27me3_df$Start, end = H3K27me3_df$End))
+H3K4me3_gr <- GRanges(seqnames = H3K4me3_df$Chr, ranges = IRanges(start = H3K4me3_df$Start, end = H3K4me3_df$End))
+H3K9me3_gr <- GRanges(seqnames = H3K9me3_df$Chr, ranges = IRanges(start = H3K9me3_df$Start, end = H3K9me3_df$End))
+
+# Create GRanges List
+
+peaks <- GRangesList(
+  H3K27ac = H3K27ac_gr,
+  H3K27me3 = H3K27me3_gr,
+  H3K4me3 = H3K4me3_gr,
+  H3K9me3 = H3K9me3_gr
+)
+
+```
+
+# We want to visualize changes in histone modifications between the different cells (here: part 2, naive vs. exhausted). The intensity is defined as the mean expression of the histones over the 4 reps. We then want to plot only regions with significant changes, which we defined as log2 fold change >0.1 or <-0.1.
+
+# H3K27ac
+```{r}
+H3K27ac_new <- H3K27ac_df[,-c(1:10, 15:18)]
+
+mean_naive_H3K27ac <- rowMeans(H3K27ac_new[, 1:4])   # naive day 32 cols
+mean_exh_H3K27ac <- rowMeans(H3K27ac_new[, 5:8])  #  exhausted day 32 cols
+
+# Compute log2 fold change (memory / naive), add small pseudocount to avoid log2(0)
+pseudocount <- 1e-6
+log2FC_H3K27ac <- log2((mean_exh_H3K27ac + pseudocount) / (mean_naive_H3K27ac + pseudocount))
+summary(log2FC_H3K27ac)
+
+# Filter rows with log2FC > 0.1 (you can add abs(log2FC) > 0.1 if you want both directions)
+sig_rows_H3K27ac <- which(abs(log2FC_H3K27ac) > 0.1)
+
+sig_H3K27ac_signal <- H3K27ac_new[sig_rows_H3K27ac, ]
+
+# Scale the signal matrix for plotting
+scaled_signal_H3K27ac <- t(scale(t(sig_H3K27ac_signal)))  
+# Scale rows (regions) - so each region is mean 0, sd 1
+
+pheatmap(scaled_signal_H3K27ac, main = "H3K27ac (Naive & Exhausted) Significant Regions", show_rownames = FALSE, cutree_rows = 2)
+
+```
+# H3K27me3
+```{r}
+H3K27me3_new <- H3K27me3_df[,-c(1:10, 15:18)]
+
+mean_naive_H3K27me3 <- rowMeans(H3K27me3_new[, 1:4])   # naive day 32 cols
+mean_exh_H3K27me3 <- rowMeans(H3K27me3_new[, 5:8])  #  exhausted day 32 cols
+
+# Compute log2 fold change (memory / naive), add small pseudocount to avoid log2(0)
+pseudocount <- 1e-6
+log2FC_H3K27me3 <- log2((mean_exh_H3K27me3 + pseudocount) / (mean_naive_H3K27me3 + pseudocount))
+summary(log2FC_H3K27me3)
+
+# Filter rows with log2FC > 0.1 (you can add abs(log2FC) > 0.1 if you want both directions)
+sig_rows_H3K27me3 <- which(abs(log2FC_H3K27me3) > 0.1)
+
+sig_H3K27me3_signal <- H3K27me3_new[sig_rows_H3K27me3, ]
+
+# Scale the signal matrix for plotting
+scaled_signal_H3K27me3 <- t(scale(t(sig_H3K27me3_signal)))  
+# Scale rows (regions) - so each region is mean 0, sd 1
+
+pheatmap(scaled_signal_H3K27me3, main = "H3K27me3 (Naive & Exhausted) Significant Regions", show_rownames = FALSE, cutree_rows = 2)
+
+```
+
+#H3K4me3
+```{r}
+H3K4me3_new <- H3K4me3_df[,-c(1:10, 15:18)]
+
+mean_naive_H3K4me3 <- rowMeans(H3K4me3_new[, 1:4])   # naive day 32 cols
+mean_exh_H3K4me3 <- rowMeans(H3K4me3_new[, 5:8])  #  exhausted day 32 cols
+
+# Compute log2 fold change (memory / naive), add small pseudocount to avoid log2(0)
+pseudocount <- 1e-6
+log2FC_H3K4me3 <- log2((mean_exh_H3K4me3+ pseudocount) / (mean_naive_H3K4me3 + pseudocount))
+summary(log2FC_H3K4me3)
+
+# Filter rows with log2FC > 0.1 (you can add abs(log2FC) > 0.1 if you want both directions)
+sig_rows_H3K4me3 <- which(abs(log2FC_H3K4me3) > 0.1)
+
+sig_H3K4me3_signal <- H3K4me3_new[sig_rows_H3K4me3, ]
+
+# Scale the signal matrix for plotting
+scaled_signal_H3K4me3 <- t(scale(t(sig_H3K4me3_signal)))  
+# Scale rows (regions) - so each region is mean 0, sd 1
+
+pheatmap(scaled_signal_H3K4me3, main = "H3K4me3 (Naive & Exhausted) Significant Regions", show_rownames = FALSE, cutree_rows = 2)
+
+```
+
+#H3K9me3
+```{r}
+H3K9me3_new <- H3K9me3_df[,-c(1:10, 15:18)]
+
+mean_naive_H3K9me3 <- rowMeans(H3K9me3_new[, 1:4])   # naive day 32 cols
+mean_exh_H3K9me3 <- rowMeans(H3K9me3_new[, 5:8])  #  exhausted day 32 cols
+
+# Compute log2 fold change (memory / naive), add small pseudocount to avoid log2(0)
+pseudocount <- 1e-6
+log2FC_H3K9me3 <- log2((mean_exh_H3K9me3 + pseudocount) / (mean_naive_H3K9me3 + pseudocount))
+summary(log2FC_H3K9me3)
+
+# Filter rows with log2FC > 0.1 (you can add abs(log2FC) > 0.1 if you want both directions)
+sig_rows_H3K9me3 <- which(abs(log2FC_H3K9me3) > 0.1)
+
+sig_H3K9me3_signal <- H3K9me3_new[sig_rows_H3K9me3, ]
+
+# Scale the signal matrix for plotting
+scaled_signal_H3K9me3 <- t(scale(t(sig_H3K9me3_signal)))  
+# Scale rows (regions) - so each region is mean 0, sd 1
+
+pheatmap(scaled_signal_H3K9me3, main = "H3K9me3 (Naive & Exhausted) Significant Regions", show_rownames = FALSE, cutree_rows = 2)
+
+```
+
+Now that we have visualized the changes based on the log2FC we want to have a closer look and plot the 200 peaks with the most significant FC for each Histone Mark for each comparison (part1, part2, part3)
+
+#H3K27ac top 200
+```{r}
+log2FC_sig_H3K27ac <- log2FC_H3K27ac[sig_rows_H3K27ac]
+top200_idx_H3K27ac <- order(abs(log2FC_sig_H3K27ac), decreasing = TRUE)[1:200]
+top200_scaled_signal_H3K27ac <- scaled_signal_H3K27ac[top200_idx_H3K27ac, ]
+pheatmap(top200_scaled_signal_H3K27ac, main = "H3K27ac (Memory & Exhausted) Top 200 Significant Regions", show_rownames = FALSE, cutree_rows = 2)
+```
+#H3K27me3 top 200
+```{r}
+log2FC_sig_H3K27me3 <- log2FC_H3K27me3[sig_rows_H3K27me3]
+top200_idx_H3K27me3 <- order(abs(log2FC_sig_H3K27me3), decreasing = TRUE)[1:200]
+top200_scaled_signal_H3K27me3 <- scaled_signal_H3K27me3[top200_idx_H3K27me3, ]
+pheatmap(top200_scaled_signal_H3K27me3, main = "H3K27me3 (Memory & Exhausted) Top 200 Significant Regions", show_rownames = FALSE, cutree_rows = 2)
+```
+#H3K9me3
+```{r}
+log2FC_sig_H3K9me3 <- log2FC_H3K27me3[sig_rows_H3K9me3]
+top200_idx_H3K9me3 <- order(abs(log2FC_sig_H3K9me3), decreasing = TRUE)[1:200]
+top200_scaled_signal_H3K9me3 <- scaled_signal_H3K27me3[top200_idx_H3K9me3, ]
+pheatmap(top200_scaled_signal_H3K9me3, main = "H3K9me3(Memory & Exhausted) Top 200 Significant Regions", show_rownames = FALSE, cutree_rows = 2)
+```
+
+#H3K4me3
+```{r}
+log2FC_sig_H3K4me3 <- log2FC_H3K4me3[sig_rows_H3K4me3]
+top200_idx_H3K4me3 <- order(abs(log2FC_sig_H3K4me3), decreasing = TRUE)[1:200]
+top200_scaled_signal_H3K4me3 <- scaled_signal_H3K4me3[top200_idx_H3K4me3, ]
+pheatmap(top200_scaled_signal_H3K4me3, main = "H3K4me3 (Memory & Exhausted) Top 200 Significant Regions", show_rownames = FALSE, cutree_rows = 2)
+```
+
