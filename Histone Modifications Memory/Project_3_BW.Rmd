@@ -21,40 +21,114 @@ suppressPackageStartupMessages({
   library(magick)
   library(R.utils) 
   library(MASS)
-  library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-  library(org.Hs.eg.db)
+  library(org.Mm.eg.db)
   library(AnnotationDbi)
   library(valr)
   library(EnrichedHeatmap)
   library(gridExtra)
   library(grid)
+  library(motifmatchr)
+  library(MotifDb)
+  library(universalmotif)
+  library(PWMEnrich)
 })
 ```
 
+```{r}
+ah <- AnnotationHub(localHub=TRUE)
+ensdb <- ah[["AH89211"]] # mouse ensembldb object
+genes <- genes(ensdb)
+```
+
+We have hPMTs and one motif (CTCF), we could try to motif match??
+
+```{r}
+
+```
+
+
 # Comparing the histone modifications of naive T cells
+First reinporting the GRanges files of all the peaks
+```{r}
+peaks_part1 <- GRangesList(
+  H3K27ac = import("peak_bed_files/H3K27ac_peaks.bed"),
+  H3K27me3 = import("peak_bed_files/H3K27me3_peaks.bed"),
+  H3K4me3 = import("peak_bed_files/H3K4me3_peaks.bed"),
+  H3K9me3 = import("peak_bed_files/H3K9me3_peaks.bed")
+)
+
+peaks_open_me_na <- read.csv("files/memory_open_peaks_signal.csv", header = T)
+peaks_closed_me_na <- read.csv("files/memory_closed_peaks_signal.csv", header = T)
+peaks_biv_me_na <- read.csv("files/memory_bivalent.csv", header = T)
+```
+
+
+
+```{r}
+bw_files <- list.files("bigwig_files", pattern = ".\\.bw$", full.names = T)
+
+names(bw_files) <- gsub("\\.bw$", "", basename(bw_files))
+```
+
 
 ```{r}
 # Naive
 bwfiles_naive <- list.files("bigwig_files", pattern = "_naive.bw$", full.names = TRUE)
 names(bwfiles_naive) <- gsub("\\.bw$", "", basename(bwfiles_naive))
 
-naive_regions <- reduce(unlist(GRangesList(peaks)))
+naive_regions <- reduce(unlist(GRangesList(peaks_part1)))
 sm_n <- signal2Matrix(bwfiles_naive, regions = naive_regions, w = 40)
 
-
-naive_regions_f <- reduce(unlist(GRangesList(peaks_filtered)))
-sm_n_filtered <- signal2Matrix(bwfiles_naive, regions = naive_regions_f, w = 40)
 
 # Memory
 bwfiles_memory <- list.files("bigwig_files", pattern = "_memory.bw$", full.names = TRUE)
 names(bwfiles_memory) <- gsub("\\.bw$", "", basename(bwfiles_memory))
 
-memory_regions <- reduce(unlist(GRangesList(peaks)))
+memory_regions <- reduce(unlist(GRangesList(peaks_part1)))
 sm_m <- signal2Matrix(bwfiles_memory, regions = memory_regions, w = 40)
 
-memory_regions_f <- reduce(unlist(GRangesList(peaks_filtered)))
-sm_m_filtered <- signal2Matrix(bwfiles_memory, regions = memory_regions_f, w = 40)
+# Exhausted
+
+bwfiles_exh <- list.files("bigwig_files", pattern = "_EX.bw$", full.names = TRUE)
+names(bwfiles_exh) <- gsub("\\.bw$", "", basename(bwfiles_exh))
+
+exh_regions <- reduce(unlist(GRangesList(peaks_part1)))
+sm_e <- signal2Matrix(bwfiles_exh, regions = exh_regions, w = 40)
+
 ```
+
+```{r}
+plotEnrichedHeatmaps(sm_n, multiScale = T)
+plotEnrichedHeatmaps(sm_m,  multiScale = T)
+plotEnrichedHeatmaps(sm_e,  multiScale = T)
+```
+
+```{r}
+bivalent_overlaps <- peaks_part1$H3K27me3[overlapsAny(peaks_part1$H3K27me3, peaks_part1$H3K4me3)]
+
+sm2 <- signal2Matrix(bw_files, regions = bivalent_overlaps, w = 50)
+
+colData(sm2)
+```
+
+Visualising a single region (w6)
+```{r}
+plotSignalTracks(files = bw_files, region = peaks_part1$H3K27ac[1], extend=5000, tracks.params = list(ylim=c(0,170)), 
+                  ensdb = ensdb,  transcripts = "full" )
+plotSignalTracks(files = bw_files, region = peaks_part1$H3K4me3[1], extend=5000, tracks.params = list(ylim=c(0,170)), 
+                  ensdb = ensdb,  transcripts = "full" )
+plotSignalTracks(files = bw_files, region = peaks_part1$H3K27me3[1], extend=5000, tracks.params = list(ylim=c(0,170)), 
+                  ensdb = ensdb,  transcripts = "full" )
+plotSignalTracks(files = bw_files, region = peaks_part1$H3K9me3[1], extend=5000, tracks.params = list(ylim=c(0,170)), 
+                  ensdb = ensdb,  transcripts = "full" )
+```
+
+Generating coverage tracks
+```{r}
+
+```
+
+
 
 
 ```{r}

@@ -35,23 +35,45 @@ T Lymphocytes (T Cells) are immune cells found in the blood. They are the cell c
 
 When mature T cells are exposed to chronic infections and cancer, T cells can enter a state of exhaustion, and are no longer equally functional as before. Exhausted T cells (T$_{Exh}$) differ from mature T Cells or T$_{Mem}$ on a transcriptomic and epigenetic level. [@Wherry2011][@Wherry2010]
 
-Compared to T$_{Mem}$, T$_{Exh}$ show a unique open chromatin landscape, which was explored by comparing histone modification of T$_{naive}$, T$_{Mem}$, and T$_{Exh}$. The four histone modifications that were analysed are H3K3
+Compared to T$_{Mem}$, T$_{Exh}$ show a unique open chromatin landscape, which was explored by comparing posttranslational histone modifications (hPTMs) of T$_{naive}$, T$_{Mem}$, and T$_{Exh}$. The four hPTMs that were analysed are H3K4me4, H3K24ac, H3K27me3, H3K9me3. H3K4me4 and H3K24ac are associated with active promoters, while H3K27me3 and H3K9me3 are associated with repressed repeats and gene repression. However, combinations of H3K27me3 and H3K4me3, as discussed in the lecture, occur in so-called bivalent regions, which are prevalent on developmental genes that are poised for transcription, and depending on differentiation, the region is either active (H3K4me3) or repressed (H3K27me3). 
+
+When reading the paper, we decided that for our analysis we wanted to focus on two main points: (1) comparing the chromatin states of , T$_{Mem}$, T$_{Exh}$, and T$_{naive}$, and (2) focusing on bivalent regions containing both H3K27me3 and H3K4me3 hPMTs to answer our question whether during transition from T$_{naive}$ to T$_{Exh}$ or T$_{Mem}$ these bivalent regions show irreversible changes that could potentially explain the phenotypes of these cell types. 
 
 
-We downloaded the 4 histone modifications they provided for all 3 cell types, all two days, resulting in 24
+# Methods
+For our analysis we structured the document as follows:
 
+## Downloading the data
+The data was available in txt and bw files, which we both needed for the analysis. All normalised hPMTs and the normalised CTCF file were download in txt format, while all hPMTs for all cell types were downloaded as bw files. T$_{Mem}$ were harvested at D30 after seeding, T$_{Exh}$ were harvested at D32 after seeding, and T$_{naive}$ were harvested in two groups at both of the timepoints. Since the data was available, we decided to whenever possible compare the cell types at the same timepoint. When comparing the T$_{Mem}$ and T$_{Exh}$, this was not possible.
 
+## Quality control of peaks
+After downloading and importing the files, we performed an upset plot to see the intersection size of the signal of our histone modifications across all cell types.
+The quality of our peakfiles was checked by performing a principal component analysis to see how the different cells and histone modifications would cluster. 
+
+## Signal Extraction and Filtering
+Since the peak data was only available as txt files, we had to convert them to GRanges files. This was done with assistance from Perplexity AI. After converting the files, we split the files to only look at our cells of interest, to compare T$_{naive}$-T$_{Mem}$, T$_{naive}$-T$_{Exh}$, and T$_{Mem}$-T$_{Exh}$. 
+
+To filter for significantly changed hPMTs in the different cell type comparison, the mean(log2(signal)) of both cell types was compared, always dividing the mean of the first named by the second named (i.e. T$_{naive}$-T$_{Mem}$: mean(log2(signal T$_{Mem}$)) / mean(log2(signal T$_{naive}$))). To avoid a log2(0), a pseudocount of 1e-6 was added to all the mean values. 
+Absolute values > 0.1 were deemed significant and further analysed.
+
+First we looked at changes in hPMTs within each histone modification by generating heatmaps, then in a second step, all hPMTs were combined into one heatmap to see if the regions overlapped.
+
+In a final step of this part, the highly expressed active, repressed, and bivalent regions were exported to decrease the working power needed for the analysis.
+
+# Downloading of data
 
 ## Peaks and Histone modifications
 ```{r}
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K27ac%5FwID%2Etxt%2Egz", "peaks/NormRC_H3K27ac_wID.txt.gz")
-gunzip("peaks/NormRC_H3K27ac_wID.txt.gz")
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K27me3%5FwID%2Etxt%2Egz", "peaks/NormRC_H3K27me3_wID.txt.gz")
-gunzip("peaks/NormRC_H3K27me3_wID.txt.gz")
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K4me3%5FwID%2Etxt%2Egz", "peaks/NormRC_H3K4me3_wID.txt.gz")
-gunzip("peaks/NormRC_H3K4me3_wID.txt.gz")
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K9me3%5FwID%2Etxt%2Egz", "peaks/NormRC_H3K9me3_wID.txt.gz")
-gunzip("peaks/NormRC_H3K9me3_wID.txt.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FCTCF%5FwID%2Etxt%2Egz", "peaks/CTCF.txt.gz")
+gunzip("peaks/CTCF.txt.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K27ac%5FwID%2Etxt%2Egz", "peaks/H3K27ac_wID.txt.gz")
+gunzip("peaks/H3K27ac_wID.txt.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K27me3%5FwID%2Etxt%2Egz", "peaks/H3K27me3_wID.txt.gz")
+gunzip("peaks/H3K27me3_wID.txt.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K4me3%5FwID%2Etxt%2Egz", "peaks/H3K4me3_wID.txt.gz")
+gunzip("peaks/H3K4me3_wID.txt.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K9me3%5FwID%2Etxt%2Egz", "peaks/H3K9me3_wID.txt.gz")
+gunzip("peaks/H3K9me3_wID.txt.gz")
 
 ```
 
@@ -65,48 +87,37 @@ options(timeout = 12000)
 
 # Key Activating
 
-#H3K4me3
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699095&format=file&file=GSM8699095%5FNaive%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS1%2Escale%2Ebw", "H3K4me3_naive_30.bw.gz")
 gunzip("H3K4me3_naive_30.bw.gz")
 
-
-#H3K27ac
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699079&format=file&file=GSM8699079%5FNaive%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS1%2Escale%2Ebw", "H3K27ac_naive_30.bw.gz")
 gunzip("H3K27ac_naive_30.bw.gz")
 
 # KeyRepressive
 
-#H3K27me3
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699111&format=file&file=GSM8699111%5FNaive%5FP14%5FDay30%5FH3K27me3%5FRep2%5FS6%2Escale%2Ebw", "H3K27me3_naive_30.bw.gz")
 gunzip("H3K27me3_naive_30.bw.gz")
 
-#H3K9me3
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699127&format=file&file=GSM8699127%5FNaive%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS1%2Escale%2Ebw", "H3K9me3_naive_30.bw.gz")
 gunzip("H3K9me3_naive_30.bw.gz")
 
 
 ```
+
 ### T mem 
 
 ```{r}
 options(timeout = 12000)
 
-#H3K4me3
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699103&format=file&file=GSM8699103%5FArm%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS5%2Escale%2Ebw", "H3K4me3_memory.bw.gz")
 gunzip("H3K4me3_memory.bw.gz")
 
-
-#H3K27ac
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699087&format=file&file=GSM8699087%5FArm%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS5%2Escale%2Ebw", "H3K27ac_memory.bw.gz")
 gunzip("H3K27ac_memory.bw.gz")
 
-# KeyRepressive
-
-#H3K27me3
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699119&format=file&file=GSM8699119%5FArm%5FP14%5FDay30%5FH3K27me3%5FRep1%5FS7%2Escale%2Ebw", "H3K27me3_memory.bw.gz")
 gunzip("H3K27me3_memory.bw.gz")
 
-#H3K9me3
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699135&format=file&file=GSM8699135%5FArm%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS3%2Escale%2Ebw", "H3K9me3_memory.bw.gz")
 gunzip("H3K9me3_memory.bw.gz")
 
@@ -137,3 +148,4 @@ H3K9me3_EX <- rtracklayer::import("H3K9me3_EX.bw", format = "bw")
 
 
 ## Bibliography
+
