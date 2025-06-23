@@ -1,5 +1,5 @@
 ---
-title: "Project_Valerie_Florence_EpiGenetics"
+title: "Deciphering the role of Histone Modifications in Memory and Exhausted CD8 T Cells"
 author: "Valerie Heckendorn and Florence Marti"
 date: "2025-05-07"
 output: 
@@ -8,12 +8,15 @@ output:
 bibliography: references.bib
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence")
 ```
 
-```{r, include = FALSE}
+# Setup and Packages
+
+```{r, include = T}
 suppressPackageStartupMessages({
   library(AnnotationHub)
   library(ensembldb)
@@ -24,41 +27,54 @@ suppressPackageStartupMessages({
   library(magick)
   library(R.utils) 
   library(MASS)
+  library(org.Mm.eg.db)
+  library(AnnotationDbi)
+  library(valr)
+  library(EnrichedHeatmap)
+  library(gridExtra)
+  library(grid)
+  library(limma)
+  library(plyranges)
+  library(dplyr)
 })
-```
 
+```
 
 # Introduction and background
 Based on a mutual interest in immune cells, and data availability, we decided to partially redo the analysis of the paper "Deciphering the role of Histone Modifications in Memory and Exhausted CD8 T Cells" by Huang et al. The paper was published on May 19th 2025 in Scientific Reports. [@Huang2025]
 
-T Lymphocytes (T Cells) are immune cells found in the blood. They are the cell component of the adaptive immune system and are responsible for mediating cell-based immune responses. Naïve T cells are developed in the thymus and can be grouped into many subgroups, amongst them CD8+ cells, which this analysis focuses on. Upon recognition of antigens by receptors on the cell surface, naïve CD8+ T cells (T$_{naive}$), further referenced naïve T cells, undergo activation, clonal expansion, and differentiation into mature T cells. Once matured, T cells can take up their intended function of killing infected cells, producing cytokines, and regulating immune responses. A small portion of mature T cells differentiates into memory T cells (T$_{Mem}$), upon antigen re-exposure, they show rapid effector function and provide the host long term protection. [@Sun2023]
+T Lymphocytes (T Cells) are immune cells found in the blood. They are the cell component of the adaptive immune system and are responsible for mediating cell-based immune responses. Naïve T cells are developed in the thymus and can be grouped into many subgroups, amongst them CD8+ cells, which this analysis focuses on. Upon recognition of antigens by receptors on the cell surface, naïve CD8+ T cells (T$_{Naive}$), further referenced naïve T cells, undergo activation, clonal expansion, and differentiation into mature T cells. Once matured, T cells can take up their intended function of killing infected cells, producing cytokines, and regulating immune responses. A small portion of mature T cells differentiates into memory T cells (T$_{Mem}$), upon antigen re-exposure, they show rapid effector function and provide the host long term protection. [@Sun2023]
 
 When mature T cells are exposed to chronic infections and cancer, T cells can enter a state of exhaustion, and are no longer equally functional as before. Exhausted T cells (T$_{Exh}$) differ from mature T Cells or T$_{Mem}$ on a transcriptomic and epigenetic level. [@Wherry2011][@Wherry2010]
 
-Compared to T$_{Mem}$, T$_{Exh}$ show a unique open chromatin landscape, which was explored by comparing posttranslational histone modifications (hPTMs) of T$_{naive}$, T$_{Mem}$, and T$_{Exh}$. The four hPTMs that were analysed are H3K4me4, H3K24ac, H3K27me3, H3K9me3. H3K4me4 and H3K24ac are associated with active promoters, while H3K27me3 and H3K9me3 are associated with repressed repeats and gene repression. However, combinations of H3K27me3 and H3K4me3, as discussed in the lecture, occur in so-called bivalent regions, which are prevalent on developmental genes that are poised for transcription, and depending on differentiation, the region is either active (H3K4me3) or repressed (H3K27me3). 
+Compared to T$_{Mem}$, T$_{Exh}$ show a unique open chromatin landscape, which was explored by comparing posttranslational histone modifications (hPTMs) of T$_{Naive}$, T$_{Mem}$, and T$_{Exh}$. The four hPTMs that were analysed are H3K4me4, H3K24ac, H3K27me3, H3K9me3. H3K4me4 and H3K24ac are associated with active promoters, while H3K27me3 and H3K9me3 are associated with repressed repeats and gene repression. However, combinations of H3K27me3 and H3K4me3, as discussed in the lecture, occur in so-called bivalent regions, which are prevalent on developmental genes that are poised for transcription, and depending on differentiation, the region is either active (H3K4me3) or repressed (H3K27me3). 
 
-When reading the paper, we decided that for our analysis we wanted to focus on two main points: (1) comparing the chromatin states of , T$_{Mem}$, T$_{Exh}$, and T$_{naive}$, and (2) focusing on bivalent regions containing both H3K27me3 and H3K4me3 hPMTs to answer our question whether during transition from T$_{naive}$ to T$_{Exh}$ or T$_{Mem}$ these bivalent regions show irreversible changes that could potentially explain the phenotypes of these cell types. 
+When reading the paper, we decided that for our analysis we wanted to focus on two main points: (1) comparing the chromatin states of T$_{Mem}$, T$_{Exh}$, and T$_{Naive}$, and (2) focusing on bivalent regions containing both H3K27me3 and H3K4me3 hPMTs to answer our question whether during transition from T$_{Naive}$ to T$_{Exh}$ or T$_{Mem}$ these bivalent regions show irreversible changes that could potentially explain the phenotypes of these cell types. 
 
 
 # Methods
 For our analysis we structured the document as follows:
 
 ## Downloading the data
-The data was available in txt and bw files, which we both needed for the analysis. All normalised hPMTs and the normalised CTCF file were download in txt format, while all hPMTs for all cell types were downloaded as bw files. T$_{Mem}$ were harvested at D30 after seeding, T$_{Exh}$ were harvested at D32 after seeding, and T$_{naive}$ were harvested in two groups at both of the timepoints. Since the data was available, we decided to whenever possible compare the cell types at the same timepoint. When comparing the T$_{Mem}$ and T$_{Exh}$, this was not possible.
+The data was available in txt and bw files, which we both needed for the analysis. All normalised hPMTs and the normalised CTCF file were download in txt format, while all hPMTs for all cell types were downloaded as bw files. T$_{Mem}$ were harvested at D30 after seeding, T$_{Exh}$ were harvested at D32 after seeding, and T$_{Naive}$ were harvested in two groups at both of the timepoints. To facilitate the comparison, replicates harvested at D30 post seeding were used for T$_{Mem}$ and while for T$_{Exh}$, replicates harvested at D32 post seeding were used.
 
 ## Quality control of peaks
 After downloading and importing the files, we performed an upset plot to see the intersection size of the signal of our histone modifications across all cell types.
 The quality of our peakfiles was checked by performing a principal component analysis to see how the different cells and histone modifications would cluster. 
 
 ## Signal Extraction and Filtering
-Since the peak data was only available as txt files, we had to convert them to GRanges files. This was done with assistance from Perplexity AI. After converting the files, we split the files to only look at our cells of interest, to compare T$_{naive}$-T$_{Mem}$, T$_{naive}$-T$_{Exh}$, and T$_{Mem}$-T$_{Exh}$. 
+Since the peak data was only available as txt files, we had to convert them to GRanges files. This was done with assistance from Perplexity AI. After converting the files, we split the files to only look at our cells of interest, to compare T$_{Naive}$-T$_{Mem}$, T$_{Naive}$-T$_{Exh}$, and T$_{Mem}$-T$_{Exh}$. 
 
-To filter for significantly changed hPMTs in the different cell type comparison, the mean(log2(signal)) of both cell types was compared, always dividing the mean of the first named by the second named (i.e. T$_{naive}$-T$_{Mem}$: mean(log2(signal T$_{Mem}$)) / mean(log2(signal T$_{naive}$))). To avoid a log2(0), a pseudocount of 1e-6 was added to all the mean values. 
+To filter for significantly changed hPMTs in the different cell type comparison, the mean(log2(signal)) of both cell types was compared, always dividing the mean of the first named by the second named (i.e. T$_{Naive}$-T$_{Mem}$: mean(log2(signal T$_{Mem}$)) / mean(log2(signal T$_{Naive}$))). To avoid a log2(0), a pseudocount of 1e-6 was added to all the mean values. 
 Absolute values > 0.1 were deemed significant and further analysed.
 
 First we looked at changes in hPMTs within each histone modification by generating heatmaps, then in a second step, all hPMTs were combined into one heatmap to see if the regions overlapped.
 
-In a final step of this part, the highly expressed active, repressed, and bivalent regions were exported to decrease the working power needed for the analysis.
+In a final step of this part, the highly expressed active, repressed, and bivalent regions were were extracted and compared to see how the regions change numerically during the differentiation steps.
+
+# Clustering and Enriched Heatmaps
+
+For analysis of the different histone modfications, the peaks and tracks were plotted and analysed using the EnrichedHeatmaps package. 
 
 # Downloading of data
 

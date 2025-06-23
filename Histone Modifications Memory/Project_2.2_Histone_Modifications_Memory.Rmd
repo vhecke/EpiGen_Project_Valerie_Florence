@@ -29,10 +29,15 @@ suppressPackageStartupMessages({
   library(grid)
   library(limma)
   library(plyranges)
+  library(dplyr)
 })
+
+# Setting my heatmap colour right in the beginning
+my_colors <- colorRampPalette(c("blue", "white", "red"))(100)
+my_breaks <- seq(-2, 2, length.out = 101)
 ```
 
-# Importing the downloaded data
+## Importing the downloaded data
 
 ```{r}
 head(read.table("peaks/H3K27ac.txt", header = TRUE))
@@ -44,6 +49,12 @@ H3K27ac_df <- read.table("peaks/H3K27ac.txt", header = TRUE)
 H3K27me3_df <- read.table("peaks/H3K27me3.txt", header = TRUE)
 H3K4me3_df <- read.table("peaks/H3K4me3.txt", header = TRUE)
 H3K9me3_df <- read.table("peaks/H3K9me3.txt", header = TRUE)
+
+# test to see what happens if we exlude these columns
+H3K27ac_df <- H3K27ac_df[, -c(11:14)]
+H3K27me3_df <- H3K27me3_df[, -c(11:14)]
+H3K4me3_df <- H3K4me3_df[, -c(11:14)]
+H3K9me3_df <- H3K9me3_df[, -c(11:14)]
 
 # GRanges
 CTCF_gr <- GRanges(seqnames = CTCF_df$Chr, ranges = IRanges(start = CTCF_df$Start, end = CTCF_df$End))
@@ -76,21 +87,21 @@ regionUpset(peaks)
 In this upset plot we show that while we have a lot of single hits, we also have 7611 bivalent regions for H3K27me3, and H3K4me3. 
 
 
-# Quality Control
+## Quality Control
 
-## PCA
+### PCA
 
 ```{r}
-H3K27ac_PCA <- H3K27ac_df[,7:22]
+H3K27ac_PCA <- H3K27ac_df[,7:18]
 rownames(H3K27ac_PCA) <- H3K27ac_df$peakN
 
-H3K4me3_PCA <- H3K4me3_df[,7:22]
+H3K4me3_PCA <- H3K4me3_df[,7:18]
 rownames(H3K4me3_PCA) <- H3K4me3_df$peakN
 
-H3K27me3_PCA <- H3K27me3_df[,7:22]
+H3K27me3_PCA <- H3K27me3_df[,7:18]
 rownames(H3K27me3_PCA) <- H3K27me3_df$peakN
 
-H3K9me3_PCA <- H3K9me3_df[,7:22]
+H3K9me3_PCA <- H3K9me3_df[,7:18]
 rownames(H3K9me3_PCA) <- H3K9me3_df$peakN
 
 
@@ -98,25 +109,19 @@ rownames(H3K9me3_PCA) <- H3K9me3_df$peakN
 
 ```{r}
 run_pca <- function(signal_matrix, mark_name) {
-  # Transpose: rows = samples, columns = peaks
   pca_input <- t(signal_matrix)
+  pca_result <- prcomp(pca_input, scale. = TRUE) # scale is important for z scoring
   
-  # Run PCA (scale = TRUE for z-scoring)
-  pca_result <- prcomp(pca_input, scale. = TRUE)
-  
-  # Variance explained by PCs
   variance <- summary(pca_result)$importance[2, ]
-  
-  # Plot PCA
   pca_df <- data.frame(
     PC1 = pca_result$x[, 1],
     PC2 = pca_result$x[, 2],
-    CellType = rep(c("Naive_30", "Naive_32", "Memory", "Exhausted"), each = 4)
+    CellType = rep(c("Naive_30", "Memory", "Exhausted"), each = 4)
   )
   
   ggplot(pca_df, aes(PC1, PC2, color = CellType)) +
   geom_point(size = 4,) +
-  scale_color_manual(values = c("Naive_30" = "#ef77b4", "Naive_32"= "#4daf4a", "Memory" = "#ff7f0e", "Exhausted" = "#a6cee3" )) +
+  scale_color_manual(values = c("Naive_30" = "#ef77b4", "Memory" = "#ff7f0e", "Exhausted" = "#4daf4a" )) +
     labs(
       title = paste("PCA of", mark_name, "Signal"),
       x = paste0("PC1 (", round(variance[1]*100, 1), "%)"),
@@ -124,6 +129,8 @@ run_pca <- function(signal_matrix, mark_name) {
     ) +
   theme_classic()
 }
+
+
 
 plot_H3K27ac <- run_pca(H3K27ac_PCA, "H3K27ac")
 plot_H3K4me3 <- run_pca(H3K4me3_PCA, "H3K4me3")
@@ -137,17 +144,14 @@ grid.arrange(
   plot_H3K27ac, plot_H3K4me3,
   plot_H3K27me3, plot_H3K9me3,
   nrow = 2,
-  top = "PCA of hPMTs in Naive vs. Memory T Cells"
+  top = "PCA of hPMTs Across all Cell Types"
 )
 ```
 ```{r}
-# Convert row names to a column named "peakID" in each data frame
 H3K27ac_PCA <- H3K27ac_PCA %>% tibble::rownames_to_column("peakID")
 H3K4me3_PCA <- H3K4me3_PCA %>% tibble::rownames_to_column("peakID")
 H3K27me3_PCA <- H3K27me3_PCA %>% tibble::rownames_to_column("peakID")
 H3K9me3_PCA <- H3K9me3_PCA %>% tibble::rownames_to_column("peakID")
-
-library(dplyr)
 
 combined_signals <- list(
   H3K27ac_PCA,
@@ -164,20 +168,17 @@ dim(combined_signals)
 
 ```
 ```{r}
-# Assuming combined_signals is your merged matrix (samples x features)
-pca_input <- t(combined_signals)  # Transpose for PCA (rows = samples)
 
-# Run PCA
+pca_input <- t(combined_signals) 
 pca_result <- prcomp(pca_input, scale. = TRUE)
 
-# Create annotation data frame
 annotation_col <- data.frame(
-  CellType = rep(rep(c("Naive_30", "Naive_32", "Memory", "Exhausted"), each = 4), times = 4),
-  HistoneMark = rep(c("H3K4me3", "H3K27ac", "H3K27me3", "H3K9me3"), each = 16)
+  CellType = rep(rep(c("Naive_30", "Memory", "Exhausted"), each = 4), times = 4),
+  HistoneMark = rep(c("H3K4me3", "H3K27ac", "H3K27me3", "H3K9me3"), each = 12)
 )
+
 rownames(annotation_col) <- colnames(combined_signals)
 
-# Combine PCA results with annotations
 pca_df <- data.frame(
   PC1 = pca_result$x[, 1],
   PC2 = pca_result$x[, 2],
@@ -189,7 +190,7 @@ pca_df <- data.frame(
 library(ggplot2)
 ggplot(pca_df, aes(PC1, PC2, color = CellType, shape = HistoneMark)) +
   geom_point(size = 4, alpha = 0.8) +
-  scale_color_manual(values = c("Naive_30" = "#ef77b4", "Naive_32"= "#4daf4a", "Memory" = "#ff7f0e", "Exhausted" = "#a6cee3" )) +
+  scale_color_manual(values = c("Naive_30" = "#ef77b4", "Memory" = "#ff7f0e", "Exhausted" = "#4daf4a")) +
   scale_shape_manual(values = c(16, 17, 15, 18)) +  # Different shapes for marks
   theme_classic() +
   labs(
@@ -206,27 +207,27 @@ ggplot(pca_df, aes(PC1, PC2, color = CellType, shape = HistoneMark)) +
 Signal intensities for naive and memory T cells were extracted, and mean values per group were calculated for each peak. We extracted the signal values from the GRanges files for each histone modification and cell type and then computed log2 fold changes and filtered for regions with significant differences (absolute log2(signal) > 0.58496), focusing on biologically relevant changes in chromatin accessibility.
 
 ```{r}
-# Naive = cols 7:10, Memory = cols 15:18
+# Naive = cols 7:10, Memory = cols 11:14, Exhausted: 15:18
 H3K27ac_signal <- cbind(
   naive = H3K27ac_df[, 7:10],
-  memory = H3K27ac_df[, 15:18],
-  exh = H3K27ac_df[, 19:22]
+  memory = H3K27ac_df[, 11:14],
+  exh = H3K27ac_df[, 15:18]
 )
 H3K27me3_signal <- cbind(
   naive = H3K27me3_df[, 7:10],
-  memory = H3K27me3_df[, 15:18],
-  exh = H3K27me3_df[, 19:22]
+  memory = H3K27me3_df[, 11:14],
+  exh = H3K27me3_df[, 15:18]
 )
 H3K4me3_signal <- cbind(
   naive = H3K4me3_df[, 7:10],
-  memory = H3K4me3_df[, 15:18],
-  exh = H3K4me3_df[, 19:22]
+  memory = H3K4me3_df[, 11:14],
+  exh = H3K4me3_df[, 15:18]
 )
 
 H3K9me3_signal <- cbind(
   naive = H3K9me3_df[, 7:10],
-  memory = H3K9me3_df[, 15:18],
-  exh = H3K9me3_df[, 19:22]
+  memory = H3K9me3_df[, 11:14],
+  exh = H3K9me3_df[, 15:18]
 )
 
 
@@ -236,139 +237,109 @@ rownames(H3K4me3_signal)  <- paste(H3K4me3_df$peakN)
 rownames(H3K9me3_signal)  <- paste(H3K9me3_df$peakN)
 ```
 
+## Comparing Naive and Memory Cells
 
-
-# H3K4me3
 ```{r}
+pseudocount <- 1e-6
+## H3K4me3
 mean_naive_H3K4me3 <- rowMeans(H3K4me3_signal[, 1:4])   
 mean_memory_H3K4me3 <- rowMeans(H3K4me3_signal[, 5:8])  
-mean_exh_H3K4me3 <- rowMeans(H3K4me3_signal[, 9:12])  
+mean_exh_H3K4me3 <- rowMeans(H3K4me3_signal[, 9:12])
 
-pseudocount <- 1e-6
 log2_H3K4me3 <- log2((mean_memory_H3K4me3 + pseudocount) / (mean_naive_H3K4me3 + pseudocount))
-
-
 sig_rows_H3K4me3 <- which(abs(log2_H3K4me3) > 0.58496)
-
-
 sig_H3K4me3_signal <- H3K4me3_signal[sig_rows_H3K4me3, 1:8]
-
-
 scaled_signal_H3K4me3 <- t(scale(t(sig_H3K4me3_signal)))  
 
-```
-
-# H3K27ac
-```{r}
-
+## H3K27ac
 mean_naive_H3K27ac <- rowMeans(H3K27ac_signal[, 1:4])  
 mean_memory_H3K27ac <- rowMeans(H3K27ac_signal[, 5:8])  
 mean_exh_H3K27ac <- rowMeans(H3K27ac_signal[, 9:12])  
 
 log2_H3K27ac <- log2((mean_memory_H3K27ac + pseudocount) / (mean_naive_H3K27ac + pseudocount))
-
-
 sig_rows_H3K27ac <- which(abs(log2_H3K27ac) > 0.58496)
-
-
 sig_H3K27ac_signal <- H3K27ac_signal[sig_rows_H3K27ac,1:8 ]
-
-# Scale the signal matrix for plotting
 scaled_signal_H3K27ac <- t(scale(t(sig_H3K27ac_signal)))  
 
-
-```
-
-# H3K27me3
-```{r}
+## H3K27me3
 mean_naive_H3K27me3 <- rowMeans(H3K27me3_signal[, 1:4])   
 mean_memory_H3K27me3 <- rowMeans(H3K27me3_signal[, 5:8]) 
 mean_exh_H3K27me3 <- rowMeans(H3K27me3_signal[, 9:12])  
 
 log2_H3K27me3 <- log2((mean_memory_H3K27me3 + pseudocount) / (mean_naive_H3K27me3 + pseudocount))
-
-
 sig_rows_H3K27me3 <- which(abs(log2_H3K27me3) > 0.58496)
-
-sig_H3K27me3_signal <- H3K27me3_signal[sig_rows_H3K27me3,1:8 ]
-
+sig_H3K27me3_signal <- H3K27me3_signal[sig_rows_H3K27me3, 1:8 ]
 scaled_signal_H3K27me3 <- t(scale(t(sig_H3K27me3_signal)))  
 
-```
 
-# H3K9me3
-```{r}
+## H3K9me3
 mean_naive_H3K9me3 <- rowMeans(H3K9me3_signal[, 1:4])   
 mean_memory_H3K9me3 <- rowMeans(H3K9me3_signal[, 5:8]) 
 mean_exh_H3K9me3 <- rowMeans(H3K9me3_signal[, 9:12])  
 
 log2_H3K9me3 <- log2((mean_memory_H3K9me3 + pseudocount) / (mean_naive_H3K9me3 + pseudocount))
-
-
 sig_rows_H3K9me3 <- which(abs(log2_H3K9me3) > 0.58496)
-
-sig_H3K9me3_signal <- H3K9me3_signal[sig_rows_H3K9me3,1:8 ]
-
+sig_H3K9me3_signal <- H3K9me3_signal[sig_rows_H3K9me3, 1:8 ]
 scaled_signal_H3K9me3 <- t(scale(t(sig_H3K9me3_signal)))  
 ```
 
-## Comparing memory and exhausted cells:
-# H3K4me3
+## Comparing naive and exhausted cells:
 ```{r}
-log2_H3K4me3_exh_me<- log2((mean_exh_H3K4me3 + pseudocount) / (mean_memory_H3K4me3 + pseudocount))
-
-sig_rows_H3K4me3_exh_me<- which(abs(log2_H3K4me3_exh_me) > 0.58496)
-
-sig_H3K4me3_signal_exh_me<- H3K4me3_signal[sig_rows_H3K4me3_exh_me,5:12 ]
-
-scaled_signal_H3K4me3_exh_me<- t(scale(t(sig_H3K4me3_signal_exh_me)))  
-
-```
-
-# H3K27ac
-```{r}
-log2_H3K27ac_exh_me<- log2((mean_exh_H3K27ac + pseudocount) / (mean_memory_H3K27ac + pseudocount))
+## H3K4me3
+log2_H3K4me3_EXN <- log2((mean_exh_H3K4me3 + pseudocount) / (mean_naive_H3K4me3 + pseudocount))
+sig_rows_H3K4me3_EXN <- which(abs(log2_H3K4me3_EXN) > 0.58496)
+sig_H3K4me3_signal_EXN <- H3K4me3_signal[sig_rows_H3K4me3_EXN,c(1:4, 9:12)]
+scaled_signal_H3K4me3_EXN <- t(scale(t(sig_H3K4me3_signal_EXN)))  
 
 
-sig_rows_H3K27ac_exh_me<- which(abs(log2_H3K27ac_exh_me) > 0.58496)
-
-
-sig_H3K27ac_signal_exh_me<- H3K27ac_signal[sig_rows_H3K27ac, 5:12]
-
-scaled_signal_H3K27ac_exh_me<- t(scale(t(sig_H3K27ac_signal_exh_me)))  
-
-
-```
+## H3K27ac
+log2_H3K27ac_EXN <- log2((mean_exh_H3K27ac + pseudocount) / (mean_naive_H3K27ac + pseudocount))
+sig_rows_H3K27ac_EXN <- which(abs(log2_H3K27ac_EXN) > 0.58496)
+sig_H3K27ac_signal_EXN <- H3K27ac_signal[sig_rows_H3K27ac,c(1:4, 9:12)]
+scaled_signal_H3K27ac_EXN <- t(scale(t(sig_H3K27ac_signal_EXN)))  
 
 # H3K27me3
-```{r}
-log2_H3K27me3_exh_me<- log2((mean_exh_H3K27me3 + pseudocount) / (mean_memory_H3K27me3 + pseudocount))
-
-
-sig_rows_H3K27me3_exh_me<- which(abs(log2_H3K27me3_exh_me) > 0.58496)
-
-sig_H3K27me3_signal_exh_me<- H3K27me3_signal[sig_rows_H3K27me3_exh_me,5:12 ]
-
-scaled_signal_H3K27me3_exh_me<- t(scale(t(sig_H3K27me3_signal_exh_me)))  
-
-```
+log2_H3K27me3_EXN <- log2((mean_exh_H3K27me3 + pseudocount) / (mean_naive_H3K27me3 + pseudocount))
+sig_rows_H3K27me3_EXN <- which(abs(log2_H3K27me3_EXN) > 0.58496)
+sig_H3K27me3_signal_EXN <- H3K27me3_signal[sig_rows_H3K27me3_EXN,c(1:4, 9:12)]
+scaled_signal_H3K27me3_EXN <- t(scale(t(sig_H3K27me3_signal_EXN)))  
 
 # H3K9me3
+log2_H3K9me3_EXN <- log2((mean_exh_H3K9me3 + pseudocount) / (mean_naive_H3K9me3 + pseudocount))
+sig_rows_H3K9me3_EXN <- which(abs(log2_H3K9me3_EXN) > 0.58496)
+sig_H3K9me3_signal_EXN <- H3K9me3_signal[sig_rows_H3K9me3_EXN,c(1:4, 9:12)]
+scaled_signal_H3K9me3_EXN <- t(scale(t(sig_H3K9me3_signal_EXN)))  
+```
+
+
+## Comparing memory and exhausted cells:
 ```{r}
-log2_H3K9me3_exh_me<- log2((mean_exh_H3K9me3 + pseudocount) / (mean_memory_H3K9me3 + pseudocount))
+# H3K4me3
+log2_H3K4me3_EXM<- log2((mean_exh_H3K4me3 + pseudocount) / (mean_memory_H3K4me3 + pseudocount))
+sig_rows_H3K4me3_EXM<- which(abs(log2_H3K4me3_EXM) > 0.58496)
+sig_H3K4me3_signal_EXM<- H3K4me3_signal[sig_rows_H3K4me3_EXM, 5:12 ]
+scaled_signal_H3K4me3_EXM<- t(scale(t(sig_H3K4me3_signal_EXM)))  
 
 
-sig_rows_H3K9me3_exh_me<- which(abs(log2_H3K9me3_exh_me) > 0.58496)
+# H3K27ac
+log2_H3K27ac_EXM<- log2((mean_exh_H3K27ac + pseudocount) / (mean_memory_H3K27ac + pseudocount))
+sig_rows_H3K27ac_EXM<- which(abs(log2_H3K27ac_EXM) > 0.58496)
+sig_H3K27ac_signal_EXM<- H3K27ac_signal[sig_rows_H3K27ac, 5:12]
+scaled_signal_H3K27ac_EXM<- t(scale(t(sig_H3K27ac_signal_EXM)))  
 
-sig_H3K9me3_signal_exh_me <- H3K9me3_signal[sig_rows_H3K9me3_exh_me, 5:12]
+# H3K27me3
+log2_H3K27me3_EXM<- log2((mean_exh_H3K27me3 + pseudocount) / (mean_memory_H3K27me3 + pseudocount))
+sig_rows_H3K27me3_EXM<- which(abs(log2_H3K27me3_EXM) > 0.58496)
+sig_H3K27me3_signal_EXM<- H3K27me3_signal[sig_rows_H3K27me3_EXM,5:12 ]
+scaled_signal_H3K27me3_EXM<- t(scale(t(sig_H3K27me3_signal_EXM)))  
 
-scaled_signal_H3K9me3_exh_me<- t(scale(t(sig_H3K9me3_signal_exh_me)))  
+# H3K9me3
+log2_H3K9me3_EXM<- log2((mean_exh_H3K9me3 + pseudocount) / (mean_memory_H3K9me3 + pseudocount))
+sig_rows_H3K9me3_EXM<- which(abs(log2_H3K9me3_EXM) > 0.58496)
+sig_H3K9me3_signal_EXM <- H3K9me3_signal[sig_rows_H3K9me3_EXM, 5:12]
+scaled_signal_H3K9me3_EXM<- t(scale(t(sig_H3K9me3_signal_EXM)))  
 ```
 
-
-```{r, eval = T, include = F}
-rm(mean_memory_H3K27ac, mean_naive_H3K27ac, mean_memory_H3K27me3, mean_memory_H3K4me3, mean_memory_H3K9me3, mean_naive_H3K27me3, mean_naive_H3K4me3, mean_naive_H3K9me3, sig_rows_H3K27ac, sig_rows_H3K27me3, sig_rows_H3K4me3, sig_rows_H3K9me3, sig_H3K27ac_signal, sig_H3K27me3_signal,sig_H3K4me3_signal, sig_H3K9me3_signal, log2_H3K27ac, log2_H3K27me3, log2_H3K4me3, log2_H3K9me3, sig_H3K9me3_signal_exh_me, sig_rows_H3K9me3_exh_me, sig_H3K27me3_signal_exh_me, sig_rows_H3K27me3_exh_me, sig_H3K27ac_signal_exh_me, sig_rows_H3K27ac_exh_me, sig_H3K4me3_signal_exh_me, sig_rows_H3K4me3_exh_me, sig_H3K9me3_signal, sig_rows_H3K9me3, sig_H3K27me3_signal, sig_rows_H3K27me3, sig_H3K27ac_signal, sig_rows_H3K27ac, sig_rows_H3K4me3, sig_H3K4me3_signal)
-```
 
 # Visualisation of heatmaps for memory vs naive
 ```{r}
@@ -380,45 +351,132 @@ annotation_col <- data.frame(
 annotation_colors <- list(
   CellType = c("Naive T-Cell" = "#ef77b4", "Memory T-Cell" = "#ff7f0e"))
 
-my_breaks <- seq(-2, 2, length.out = 50)
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K4me3)  
-
-hmap1 <- pheatmap::pheatmap(scaled_signal_H3K4me3, annotation_col = annotation_col, annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, main = "H3K4me3" ,silent = TRUE)
-
-
+hmap1 <- pheatmap::pheatmap(scaled_signal_H3K4me3, color = my_colors, breaks = my_breaks,  
+                            annotation_col = annotation_col,
+                            annotation_colors = annotation_colors, 
+                            show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K27ac)  
-
-hmap2 <- pheatmap::pheatmap(scaled_signal_H3K27ac, annotation_col = annotation_col, annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, main = "H3K27ac", silent = TRUE)
+hmap2 <- pheatmap::pheatmap(scaled_signal_H3K27ac, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K27me3)  
-hmap3 <- pheatmap::pheatmap(scaled_signal_H3K27me3, annotation_col = annotation_col, annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, main = "H3K27me3", silent = TRUE)
+hmap3 <- pheatmap::pheatmap(scaled_signal_H3K27me3, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE,  silent = TRUE)
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K9me3)  
-hmap4 <- pheatmap::pheatmap(scaled_signal_H3K9me3, annotation_col = annotation_col, annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, main = "H3K9me3", silent = TRUE)
+hmap4 <- pheatmap::pheatmap(scaled_signal_H3K9me3, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 ```
 
 
-```{r, fig.align='center',fig.cap="Figure 2. Heatmaps of z-scored signal intensities for significantly different peaks in each histone modification. Each heatmap displays naive and memory T cell samples, with hierarchical clustering of regions. Color scale represents scaled signal intensity (blue: low, yellow: intermediate, red: high", fig.height=10, fig.width= 5}
-# Arrange in 2x2 grid (activating on top, suppressing on bottom)
-grid.arrange(
-  hmap2$gtable, hmap1$gtable,
-  hmap3$gtable, hmap4$gtable,
-  nrow = 4,
-  top = "Histone Modification Profiles in T$_{Mem}$ vs T$_{Exh}$"
+# Visualisation of heatmaps for naive vs exhausted
+```{r}
+# Suppose you have 4 naive and 4 exhausted samples per histone mark
+annotation_col <- data.frame(
+  CellType = rep(c("Naive T-Cell", "Exhausted T-Cell"), each = 4)
 )
 
+annotation_colors <- list(
+  CellType = c("Naive T-Cell" = "#ef77b4", "Exhausted T-Cell" = "#4daf4a" ))
+
+
+rownames(annotation_col) <- colnames(scaled_signal_H3K4me3_EXN)  
+hmap5 <- pheatmap::pheatmap(scaled_signal_H3K4me3_EXN, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+
+
+rownames(annotation_col) <- colnames(scaled_signal_H3K27ac_EXN)  
+hmap6 <- pheatmap::pheatmap(scaled_signal_H3K27ac_EXN, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+
+
+rownames(annotation_col) <- colnames(scaled_signal_H3K27me3_EXN)  
+hmap7 <- pheatmap::pheatmap(scaled_signal_H3K27me3_EXN, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE,  silent = TRUE)
+
+rownames(annotation_col) <- colnames(scaled_signal_H3K9me3_EXN)  
+hmap8 <- pheatmap::pheatmap(scaled_signal_H3K9me3_EXN, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+```
+
+
+
+# Visualisation of heatmaps for memory vs exhausted
+```{r}
+# Suppose you have 4 naive and 4 memory samples per histone mark
+annotation_col <- data.frame(
+  CellType = rep(c("Memory T-Cell", "Exhausted T-Cell"), each = 4)
+)
+
+annotation_colors <- list(
+  CellType = c("Memory T-Cell" = "#ff7f0e", "Exhausted T-Cell" = "#4daf4a" ))
+
+rownames(annotation_col) <- colnames(scaled_signal_H3K4me3_EXM)  
+hmap9 <- pheatmap::pheatmap(scaled_signal_H3K4me3_EXM, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+
+
+rownames(annotation_col) <- colnames(scaled_signal_H3K27ac_EXM)  
+hmap10 <- pheatmap::pheatmap(scaled_signal_H3K27ac_EXM, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+
+
+rownames(annotation_col) <- colnames(scaled_signal_H3K27me3_EXM)  
+hmap11 <- pheatmap::pheatmap(scaled_signal_H3K27me3_EXM, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE,  silent = TRUE)
+
+rownames(annotation_col) <- colnames(scaled_signal_H3K9me3_EXM)  
+hmap12 <- pheatmap::pheatmap(scaled_signal_H3K9me3_EXM, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+```
+
+
+```{r fig.align='center', fig.height=10, fig.width=12.5, fig.cap="Figure 2. Heatmaps of z-scored signal intensities for significantly different peaks in each histone modification. Each heatmap displays naive, memory, and exhausted T cell samples. Color scale represents scaled signal intensity (blue: low, red: high)"}
+# Create histone mark labels as a vertical column
+label_grobs <- arrangeGrob(
+  textGrob("H3K27ac", rot = 90, gp = gpar(fontsize = 12, fontface = "bold")),
+  textGrob("H3K4me3", rot = 90, gp = gpar(fontsize = 12, fontface = "bold")),
+  textGrob("H3K27me3", rot = 90, gp = gpar(fontsize = 12, fontface = "bold")),
+  textGrob("H3K9me3", rot = 90, gp = gpar(fontsize = 12, fontface = "bold")),
+  ncol = 1,
+  heights = unit(rep(1, 4), "null")  # match heatmap row heights
+)
+
+# Stack the heatmaps as before
+col1 <- arrangeGrob(hmap2$gtable, hmap1$gtable, hmap3$gtable, hmap4$gtable, ncol = 1)
+col2 <- arrangeGrob(hmap6$gtable, hmap5$gtable, hmap7$gtable, hmap8$gtable, ncol = 1)
+col3 <- arrangeGrob(hmap10$gtable, hmap9$gtable, hmap11$gtable, hmap12$gtable, ncol = 1)
+
+# Add titles to each column
+col1_with_title <- arrangeGrob(textGrob("Naive vs Memory", gp = gpar(fontsize = 12, fontface = "bold")),
+                               col1,
+                               ncol = 1,
+                               heights = unit.c(unit(1, "lines"), unit(1, "null")))
+
+col2_with_title <- arrangeGrob(textGrob("Naive vs Exhausted", gp = gpar(fontsize = 12, fontface = "bold")),
+                               col2,
+                               ncol = 1,
+                               heights = unit.c(unit(1, "lines"), unit(1, "null")))
+
+col3_with_title <- arrangeGrob(textGrob("Memory vs Exhausted", gp = gpar(fontsize = 12, fontface = "bold")),
+                               col3,
+                               ncol = 1,
+                               heights = unit.c(unit(1, "lines"), unit(1, "null")))
+
+# Combine label column and heatmap columns into full layout
+grid.arrange(label_grobs, col1_with_title, col2_with_title, col3_with_title,
+             ncol = 4,
+             widths = unit.c(unit(1.5, "cm"), unit(1, "null"), unit(1, "null"), unit(1, "null")),
+             top = "Histone Modification Profiles Across T Cell States")
 
 ```
 
+```{r, eval = T, include = F}
+#rm(mean_memory_H3K27ac, mean_naive_H3K27ac, mean_memory_H3K27me3, mean_memory_H3K4me3, mean_memory_H3K9me3, mean_naive_H3K27me3, mean_naive_H3K4me3, mean_naive_H3K9me3, sig_rows_H3K27ac, sig_rows_H3K27me3, sig_rows_H3K4me3, sig_rows_H3K9me3, sig_H3K27ac_signal, sig_H3K27me3_signal,sig_H3K4me3_signal, sig_H3K9me3_signal, log2_H3K27ac, log2_H3K27me3, log2_H3K4me3, log2_H3K9me3, sig_H3K9me3_signal_EXM, sig_rows_H3K9me3_EXM, sig_H3K27me3_signal_EXM, sig_rows_H3K27me3_EXM, sig_H3K27ac_signal_EXM, sig_rows_H3K27ac_EXM, sig_H3K4me3_signal_EXM, sig_rows_H3K4me3_EXM, sig_H3K9me3_signal, sig_rows_H3K9me3, sig_H3K27me3_signal, sig_rows_H3K27me3, sig_H3K27ac_signal, sig_rows_H3K27ac, sig_rows_H3K4me3, sig_H3K4me3_signal)
+```
+
+# Comparing all significant hPMTs of different cell type comparisons
+
+# Memory vs Naive
 
 ```{r}
 # List of all scaled matrices
 scaled_list <- list(scaled_signal_H3K4me3, scaled_signal_H3K27ac, scaled_signal_H3K27me3, scaled_signal_H3K9me3)
 
-rm(scaled_signal_H3K4me3, scaled_signal_H3K27ac, scaled_signal_H3K27me3, scaled_signal_H3K9me3)
+#rm(scaled_signal_H3K4me3, scaled_signal_H3K27ac, scaled_signal_H3K27me3, scaled_signal_H3K9me3)
 
 # Get union of all rownames (regions)
 all_regions <- Reduce(union, lapply(scaled_list, rownames))
@@ -443,7 +501,7 @@ scaled_filled <- lapply(scaled_list, fill_missing_rows, all_rows = all_regions)
 # Combine all columns together (all samples from all histone mods)
 combined_scaled <- do.call(cbind, scaled_filled)
 
-rm(scaled_list)
+#rm(scaled_list)
 ```
 
 ```{r}
@@ -453,198 +511,57 @@ samples_H3K27ac  <- colnames(scaled_filled[[2]])
 samples_H3K27me3 <- colnames(scaled_filled[[3]])
 samples_H3K9me3  <- colnames(scaled_filled[[4]])
 
-all_samples <- c (samples_H3K27ac, samples_H3K4me3, samples_H3K27me3, samples_H3K9me3)
+all_samples <- c(samples_H3K27ac, samples_H3K4me3, samples_H3K27me3, samples_H3K9me3)
 
 
 # Assuming 4 naive + 4 memory per histone modification, adjust if different
 annotation_col <- data.frame(
   CellType = rep(c("Naive T-Cell", "Memory T-Cell"), times = c(4,4)),
-  HistoneMark = rep(c( "H3K27ac", "H3K4me3", "H3K27me3", "H3K9me3"), each = 8),
-  Modification = rep(c("Activating", "Repressing"), each = 16)
+  HistoneMark = rep(c( "H3K27ac", "H3K4me3", "H3K27me3", "H3K9me3"), each = 8)
 )
 
 annotation_colors <- list(
   CellType = c("Naive T-Cell" = "#ef77b4", "Memory T-Cell" = "#ff7f0e"),
   HistoneMark = c(
-    "H3K4me3" = "#4daf4a",
-    "H3K27ac" = "#377eb8",
-    "H3K27me3" = "#e41a1c",
-    "H3K9me3" = "#984ea3"
-  ),
-  Modification = c("Activating" = "#ffd92f", "Repressing" = "#655aa5")
-)
-
-rownames(annotation_col) <- c("H3K4me3 Naive T-Cell 1 " ,  " H3K4me3 Naive T-Cell 2"  , " H3K4me3 Naive T-Cell 3","H3K4me3 Naive T-Cell 4" ,  " H3K4me3 Memory T-Cell 1" , "H3K4me3 Memory T-Cell 2","H3K4me3 Memory T-Cell 3 ","H3K4me3 Memory T-Cell 4","H3K27ac Naive T-Cell 1","H3K27ac Naive T-Cell 2","H3K27ac Naive T-Cell 3","H3K27ac Naive T-Cell 4","H3K27ac Memory T-Cell 1","H3K27ac Memory T-Cell 2","H3K27ac Memory T-Cell 3 ","H3K27ac Memory T-Cell 4","H3K27me3 Naive T-Cell 1","H3K27me3 Naive T-Cell 2","H3K27me3 Naive T-Cell 3","H3K27me3 Naive T-Cell 4","H3K27me3 Memory T-Cell 1","H3K27me3 Memory T-Cell 2","H3K27me3 Memory T-Cell 3 ","H3K27me3 Memory T-Cell 4","H3K9me3 Naive T-Cell 1","H3K9me3 Naive T-Cell 2","H3K9me3 Naive T-Cell 3","H3K9me3 Naive T-Cell 4","H3K9me3 Memory T-Cell 1","H3K9me3 Memory T-Cell 2","H3K9me3 Memory T-Cell 3 ","H3K9me3 Memory T-Cell 4")
+  "H3K4me3"   = "#ffd92f",  
+  "H3K27ac"   = "#D73027",  
+  "H3K27me3"  = "#a6cee3",  
+  "H3K9me3"   = "#6A5ACD"   
+))
 
 
+rownames(annotation_col) <- colnames(combined_scaled)
+
+top_rows <- head(order(apply(combined_scaled, 1, var), decreasing = TRUE), 5000)
 ```
 
-```{r, fig.cap="Visualisation of Top 10000 most differently expressed hPMTs across all cell types and hPMTs"}
-top_rows <- head(order(apply(combined_scaled, 1, var), decreasing = TRUE), 5000)
 
-
-
-pheatmap(combined_scaled[top_rows, ],
+```{r}
+all_hmap1 <- pheatmap::pheatmap(combined_scaled[top_rows, ],
+         color = my_colors, breaks = my_breaks, 
          annotation_col = annotation_col,
          annotation_colors = annotation_colors,
          show_colnames = FALSE,
          show_rownames = FALSE,
-         main = "Scaled Signal Intensity Across hPMTs and Cell Types",
+         main = "Naive vs. Memory T Cell",
          cluster_rows = TRUE,
-         breaks = my_breaks,
-         cluster_cols = F)
+         cluster_cols = F,
+         silent = TRUE)
 
-rm(top_rows, scaled_filled)
-```
-
-In this part we are determining which rows have a lot of signal in the activating histone modification and which regions have a lot of signal in the repressing histone modification. 
-
-Lots of signal in open chormatin regions
-```{r}
-# Extract memory signals by mark
-mem_H3K4me3  <- combined_scaled[, 5:8]
-mem_H3K27ac  <- combined_scaled[, 13:16]
-mem_H3K27me3 <- combined_scaled[, 21:24]
-mem_H3K9me3  <- combined_scaled[, 29:32]
-
-# Logical checks per row:
-# 1) H3K4me3 AND H3K27ac lots of signal (≥0) in any memory sample
-open_high_H3K4me3  <- apply(mem_H3K4me3, 1, function(x) all(x >= 0))
-open_high_H3K27ac  <- apply(mem_H3K27ac, 1, function(x) all(x >= 0))
-
-# 2) H3K27me3 AND H3K9me3 low signal (≤0) in any memory sample
-closed_low_H3K27me3 <- apply(mem_H3K27me3, 1, function(x) all(x <= 0))
-closed_low_H3K9me3  <- apply(mem_H3K9me3, 1, function(x) all(x <= 0))
-
-# Combine conditions: BOTH marks up AND BOTH marks down per row
-select_rows <- which((open_high_H3K4me3 & open_high_H3K27ac) & (closed_low_H3K27me3 & closed_low_H3K9me3))
-
-# Filtered memory subset for these rows, all memory columns
-memory_activating <- combined_scaled[select_rows, c(5:8, 13:16, 21:24, 29:32)]
-
-# Exclude rows that contain any zero in these memory columns
-memory_activating <- memory_activating[!apply(memory_activating == 0, 1, any), ]
-
-# Check dimensions and rownames
-dim(memory_activating)
-
-
-write.csv(memory_activating, file = "files/memory_open_peaks_signal.csv", row.names = T)
-```
-
-```{r}
-# 1) H3K4me3 AND H3K27ac lots of signal (≥0) in any memory sample
-open_low_H3K4me3  <- apply(mem_H3K4me3, 1, function(x) all(x <= 0))
-open_low_H3K27ac  <- apply(mem_H3K27ac, 1, function(x) all(x <= 0))
-
-# 2) H3K27me3 AND H3K9me3 low signal (≤0) in any memory sample
-closed_high_H3K27me3 <- apply(mem_H3K27me3, 1, function(x) all(x >= 0))
-closed_high_H3K9me3  <- apply(mem_H3K9me3, 1, function(x) all(x >= 0))
-
-# Combine conditions: BOTH marks up AND BOTH marks down per row
-select_rows_rep <- which((open_low_H3K4me3 & open_low_H3K27ac) & (closed_high_H3K27me3 & closed_high_H3K9me3))
-
-# Filtered memory subset for these rows, all memory columns
-memory_repressing <- combined_scaled[select_rows_rep, c(5:8, 13:16, 21:24, 29:32)]
-
-# Exclude rows that contain any zero in these memory columns
-memory_repressing <- memory_repressing[!apply(memory_repressing == 0, 1, any), ]
-
-# Check dimensions and rownames
-dim(memory_repressing)
-
-write.csv(memory_repressing, file= "files/memory_closed_peaks_signal.csv", row.names = T)
-```
-
-From now on I want to look at the rows that I definded in memory_activating and memory_repressing to be up or low signal respectively in memory cells. furthermore, these peaks are present in all of the hPMTs. Using this intersection we can represent regions with coordinated chromatin changes.
-```{r}
-# Extract memory signals by mark
-mem_H3K4me3  <- combined_scaled[, 5:8]
-mem_H3K27me3 <- combined_scaled[, 21:24]
-
-# Logical checks per row:
-# 1) H3K4me3 AND H3K27ac lots of signal (≥0) in any memory sample
-open_high_H3K4me3  <- apply(mem_H3K4me3, 1, function(x) all(x >= 0))
-
-# 2) H3K27me3 AND H3K9me3 low signal (≤0) in any memory sample
-closed_high_H3K27me3 <- apply(mem_H3K27me3, 1, function(x) all(x >= 0))
-
-# Combine conditions: BOTH marks up AND BOTH marks down per row
-select_rows_b <- which(open_high_H3K4me3 & closed_high_H3K27me3)
-
-memory_bivalent <- combined_scaled[select_rows_b, c(5:8, 13:16, 21:24, 29:32)]
-
-# Exclude rows that contain any zero in these memory columns
-memory_bivalent <- memory_bivalent[!apply(memory_bivalent == 0, 1, any), ]
-
-# Check dimensions and rownames
-dim(memory_bivalent)
-
-
-write.csv(memory_bivalent, file = "files/memory_bivalent.csv", row.names = T)
-
-
-rm(mem_H3K9me3, mem_H3K27me3, mem_H3K27ac, mem_H3K4me3)
-```
-Using this approach we decrease the size of the dataset for comparing naive and memory T cells to 308 peaks, which is substantially less than the initial 45174 peaks we looked at.
-
-
-```{r, warning=T, include = F, eval=F}
-rm(mean_naive_H3K27ac, mean_memory_H3K27ac, mean_naive_H3K27me3, mean_memory_H3K27me3,mean_naive_H3K4me3, mean_memory_H3K4me3, mean_naive_H3K9me3, mean_memory_H3K9me3, pseudocount, H3K27ac_df, H3K27me3_df, H3K4me3_df, H3K9me3_signal,H3K27ac_signal, H3K27me3_signal, H3K4me3_signal, , sig_H3K27ac_signal, sig_H3K27me3_signal, sig_H3K4me3_signal, sig_H3K9me3_signal, closed_H3K27ac, closed_H3K27me3, closed_H3K4me3, closed_H3K9me3, open_H3K27ac, open_H3K27me3, open_H3K4me3, open_H3K9me3, sig_rows_H3K27ac, sig_rows_H3K27me3, sig_rows_H3K4me3, sig_rows_H3K9me3, log2_H3K27ac, log2_H3K27me3, log2_H3K4me3, log2_H3K9me3)
-```
-
-# Visualisation of heatmaps for memory vs exhausted
-```{r}
-# Suppose you have 4 naive and 4 memory samples per histone mark
-annotation_col <- data.frame(
-  CellType = rep(c("Memory T-Cell", "Exhausted T-Cell"), each = 4)
-)
-
-annotation_colors <- list(
-  CellType = c("Memory T-Cell" = "#ff7f0e", "Exhausted T-Cell" = "#a6cee3" ))
-
-my_breaks <- seq(-2, 2, length.out = 50)
-
-rownames(annotation_col) <- colnames(scaled_signal_H3K4me3_exh_me)  
-
-hmap5 <- pheatmap::pheatmap(scaled_signal_H3K4me3_exh_me, annotation_col = annotation_col, annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, main = "H3K4me3" ,silent = TRUE)
-
-
-
-rownames(annotation_col) <- colnames(scaled_signal_H3K27ac_exh_me)  
-
-hmap6 <- pheatmap::pheatmap(scaled_signal_H3K27ac_exh_me, annotation_col = annotation_col, annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, main = "H3K27ac", silent = TRUE)
-
-
-rownames(annotation_col) <- colnames(scaled_signal_H3K27me3_exh_me)  
-hmap7 <- pheatmap::pheatmap(scaled_signal_H3K27me3_exh_me, annotation_col = annotation_col, annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, main = "H3K27me3", silent = TRUE)
-
-rownames(annotation_col) <- colnames(scaled_signal_H3K9me3_exh_me)  
-hmap8 <- pheatmap::pheatmap(scaled_signal_H3K9me3_exh_me, annotation_col = annotation_col, annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, main = "H3K9me3", silent = TRUE)
+#rm(top_rows, scaled_filled)
 ```
 
 
-```{r, fig.align='center',fig.cap="Figure 2. Heatmaps of z-scored signal intensities for significantly different peaks in each histone modification. Each heatmap displays naive and memory T cell samples, with hierarchical clustering of regions. Color scale represents scaled signal intensity (blue: low, yellow: intermediate, red: high", fig.height=10, fig.width= 5}
-# Arrange in 2x2 grid (activating on top, suppressing on bottom)
-grid.arrange(
-  hmap6$gtable, hmap5$gtable,
-  hmap7$gtable, hmap8$gtable,
-  nrow = 4,
-  top = "Histone Modification Profiles in Memory T-Cells vs Exhausted T-Cells"
-)
-
-
-```
-
+# Exhausted vs Naive 
 
 ```{r}
 # List of all scaled matrices
-scaled_list_exh_me <- list(scaled_signal_H3K4me3_exh_me, scaled_signal_H3K27ac_exh_me, scaled_signal_H3K27me3_exh_me, scaled_signal_H3K9me3_exh_me)
+scaled_list_EXN <- list(scaled_signal_H3K4me3_EXN, scaled_signal_H3K27ac_EXN, scaled_signal_H3K27me3_EXN, scaled_signal_H3K9me3_EXN)
 
-rm(scaled_signal_H3K4me3_exh_me, scaled_signal_H3K27ac_exh_me, scaled_signal_H3K27me3_exh_me, scaled_signal_H3K9me3_exh_me)
+#rm(scaled_signal_H3K4me3_EXN, scaled_signal_H3K27ac_EXN, scaled_signal_H3K27me3_EXN, scaled_signal_H3K9me3_EXN)
 
 # Get union of all rownames (regions)
-all_regions_exh_me <- Reduce(union, lapply(scaled_list_exh_me, rownames))
+all_regions_EXN <- Reduce(union, lapply(scaled_list_EXN, rownames))
 
 # Function to add missing rows with zeros and reorder rows by all_regions
 fill_missing_rows <- function(mat, all_rows) {
@@ -661,128 +578,303 @@ fill_missing_rows <- function(mat, all_rows) {
 }
 
 # Apply function to each scaled matrix
-scaled_filled_exh_me <- lapply(scaled_list_exh_me, fill_missing_rows, all_rows = all_regions_exh_me)
+scaled_filled_EXN <- lapply(scaled_list_EXN, fill_missing_rows, all_rows = all_regions_EXN)
 
 # Combine all columns together (all samples from all histone mods)
-combined_scaled_exh_me <- do.call(cbind, scaled_filled_exh_me)
+combined_scaled_EXN <- do.call(cbind, scaled_filled_EXN)
 
 ```
 
 ```{r}
 # Get colnames for each scaled matrix (samples)
-samples_H3K4me3  <- colnames(scaled_filled_exh_me[[1]])
-samples_H3K27ac  <- colnames(scaled_filled_exh_me[[2]])
-samples_H3K27me3 <- colnames(scaled_filled_exh_me[[3]])
-samples_H3K9me3  <- colnames(scaled_filled_exh_me[[4]])
+samples_H3K4me3  <- colnames(scaled_filled_EXN[[1]])
+samples_H3K27ac  <- colnames(scaled_filled_EXN[[2]])
+samples_H3K27me3 <- colnames(scaled_filled_EXN[[3]])
+samples_H3K9me3  <- colnames(scaled_filled_EXN[[4]])
 
-all_samples_exh_me <- c (samples_H3K27ac, samples_H3K4me3, samples_H3K27me3, samples_H3K9me3)
+all_samples_EXN <- c(samples_H3K27ac, samples_H3K4me3, samples_H3K27me3, samples_H3K9me3)
 
 
 # Assuming 4 naive + 4 memory per histone modification, adjust if different
-annotation_col <- data.frame(
-  CellType = rep(c("Memory T-Cell", "Exhausted T-Cell"), times = c(4,4)),
-  HistoneMark = rep(c( "H3K27ac", "H3K4me3", "H3K27me3", "H3K9me3"), each = 8),
-  Modification = rep(c("Activating", "Repressing"), each = 16)
+annotation_col_2 <- data.frame(
+  CellType = rep(c("Naive T-Cell", "Exhausted T-Cell"), times = c(4,4)),
+  HistoneMark = rep(c( "H3K27ac", "H3K4me3", "H3K27me3", "H3K9me3"), each = 8)
 )
 
-annotation_colors <- list(
-  CellType = c("Memory T-Cell" = "#ff7f0e", "Exhausted T-Cell" = "#a6cee3"),
+annotation_colors_2 <- list(
+  CellType = c("Naive T-Cell" = "#ef77b4", "Exhausted T-Cell" = "#4daf4a"),
   HistoneMark = c(
-    "H3K4me3" = "#4daf4a",
-    "H3K27ac" = "#377eb8",
-    "H3K27me3" = "#e41a1c",
-    "H3K9me3" = "#984ea3"
-  ),
-  Modification = c("Activating" = "#ffd92f", "Repressing" = "#655aa5"
-  )
+  "H3K4me3"   = "#ffd92f",  
+  "H3K27ac"   = "#D73027",  
+  "H3K27me3"  = "#a6cee3",  
+  "H3K9me3"   = "#6A5ACD"   
 )
-
-rownames(annotation_col) <- c("H3K4me3 Memory T-Cell 1 " ,  " H3K4me3 Memory T-Cell 2"  , " H3K4me3 Memory T-Cell 3","H3K4me3 Memory T-Cell 4" ,  " H3K4me3 Exhausted T-Cell 1" , "H3K4me3 Exhausted T-Cell 2","H3K4me3 Exhausted T-Cell 3 ","H3K4me3 Exhausted T-Cell 4","H3K27ac Memory T-Cell 1","H3K27ac Memory T-Cell 2","H3K27ac Memory T-Cell 3","H3K27ac Memory T-Cell 4","H3K27ac Exhausted T-Cell 1","H3K27ac Exhausted T-Cell 2","H3K27ac Exhausted T-Cell 3 ","H3K27ac Exhausted T-Cell 4","H3K27me3 Memory T-Cell 1","H3K27me3 Memory T-Cell 2","H3K27me3 Memory T-Cell 3","H3K27me3 Memory T-Cell 4","H3K27me3 Exhausted T-Cell 1","H3K27me3 Exhausted T-Cell 2","H3K27me3 Exhausted T-Cell 3 ","H3K27me3 Exhausted T-Cell 4","H3K9me3 Memory T-Cell 1","H3K9me3 Memory T-Cell 2","H3K9me3 Memory T-Cell 3","H3K9me3 Memory T-Cell 4","H3K9me3 Exhausted T-Cell 1","H3K9me3 Exhausted T-Cell 2","H3K9me3 Exhausted T-Cell 3 ","H3K9me3 Exhausted T-Cell 4")
-
-
-```
-
-```{r, fig.cap="Visualisation of Top 10000 most differently expressed hPMTs across all cell types and hPMTs"}
-top_rows <- head(order(apply(combined_scaled_exh_me, 1, var), decreasing = TRUE), 10000)
+)
+# 
+# rownames(annotation_col_2) <- c("H3K4me3 Naive T-Cell 1 " ,  " H3K4me3 Naive T-Cell 2"  , " H3K4me3 Naive T-Cell 3","H3K4me3 Naive T-Cell 4" ,  " H3K4me3 Exhausted T-Cell 1" , "H3K4me3 Exhausted T-Cell 2","H3K4me3 Exhausted T-Cell 3 ","H3K4me3 Exhausted T-Cell 4","H3K27ac Naive T-Cell 1","H3K27ac Naive T-Cell 2","H3K27ac Naive T-Cell 3","H3K27ac Naive T-Cell 4","H3K27ac Exhausted T-Cell 1","H3K27ac Exhausted T-Cell 2","H3K27ac Exhausted T-Cell 3 ","H3K27ac Exhausted T-Cell 4","H3K27me3 Naive T-Cell 1","H3K27me3 Naive T-Cell 2","H3K27me3 Naive T-Cell 3","H3K27me3 Naive T-Cell 4","H3K27me3 Exhausted T-Cell 1","H3K27me3 Exhausted T-Cell 2","H3K27me3 Exhausted T-Cell 3 ","H3K27me3 Exhausted T-Cell 4","H3K9me3 Naive T-Cell 1","H3K9me3 Naive T-Cell 2","H3K9me3 Naive T-Cell 3","H3K9me3 Naive T-Cell 4","H3K9me3 Exhausted T-Cell 1","H3K9me3 Exhausted T-Cell 2","H3K9me3 Exhausted T-Cell 3 ","H3K9me3 Exhausted T-Cell 4")
 
 
+rownames(annotation_col_2) <- colnames(combined_scaled_EXN)
 
-pheatmap(combined_scaled_exh_me[top_rows, ],
-         annotation_col = annotation_col,
-         annotation_colors = annotation_colors,
+
+top_rows_EXN <- head(order(apply(combined_scaled_EXN, 1, var), decreasing = TRUE), 5000)
+
+all_hmap2 <- pheatmap::pheatmap(combined_scaled_EXN[top_rows_EXN, ],
+         color = my_colors, breaks = my_breaks, 
+         annotation_col = annotation_col_2,
+         annotation_colors = annotation_colors_2,
          show_colnames = FALSE,
          show_rownames = FALSE,
-         main = "Scaled Signal Intensity Across hPMTs and Cell Types",
+         main = "Exhausted vs. Naive T-Cell",
          cluster_rows = TRUE,
-         breaks = my_breaks,
-         cluster_cols = F)
+         cluster_cols = F,
+         silent = TRUE)
 
-rm(top_rows, scaled_filled_exh_me)
-```
-
-In this part we are determining which rows have a lot of signal in the activating histone modification and which regions have a lot of signal in the repressing histone modification. 
-
-Lots of signal in open chormatin regions
-```{r}
-# Extract memory signals by mark
-mem_H3K4me3_exh_me  <- combined_scaled_exh_me[, 5:8]
-mem_H3K27ac_exh_me  <- combined_scaled_exh_me[, 13:16]
-mem_H3K27me3_exh_me <- combined_scaled_exh_me[, 21:24]
-mem_H3K9me3_exh_me  <- combined_scaled_exh_me[, 29:32]
-
-open_high_H3K4me3_exh_me  <- apply(mem_H3K4me3_exh_me, 1, function(x) all(x >= 0))
-open_high_H3K27ac_exh_me  <- apply(mem_H3K27ac_exh_me, 1, function(x) all(x >= 0))
-
-#closed_low_H3K27me3_exh_me <- apply(mem_H3K27me3_exh_me, 1, function(x) all(x <= 0))
-#closed_low_H3K9me3_exh_me  <- apply(mem_H3K9me3_exh_me, 1, function(x) all(x <= 0))
-
-# High signal for the activating hPMTS
-select_rows_exh_me <- which(open_high_H3K4me3_exh_me & open_high_H3K27ac_exh_me) 
-
-# Filtered memory subset for these rows, all memory columns
-activating_exh_me <- combined_scaled_exh_me[select_rows_exh_me, c(5:8, 13:16, 21:24, 29:32)]
-
-# Exclude rows that contain any zero in these memory columns
-activating_exh_me <- activating_exh_me[!apply(activating_exh_me == 0, 1, any), ]
-
-# Check dimensions and rownames
-dim(activating_exh_me)
-
-
-write.csv(activating_exh_me, file = "files/open_peaks_signal_exh_me.csv", row.names = T)
-```
-
-```{r}
-#open_low_H3K4me3_exh_me  <- apply(mem_H3K4me3_exh_me, 1, function(x) all(x <= 0))
-#open_low_H3K27ac_exh_me  <- apply(mem_H3K27ac_exh_me, 1, function(x) all(x <= 0))
-
-closed_high_H3K27me3_exh_me <- apply(mem_H3K27me3_exh_me, 1, function(x) all(x >= 0))
-closed_high_H3K9me3_exh_me  <- apply(mem_H3K9me3_exh_me, 1, function(x) all(x >= 0))
-
-# High signal for the repressing hPMTS
-select_rows_rep_exh_me <- which(closed_high_H3K27me3_exh_me & closed_high_H3K9me3_exh_me) #(open_low_H3K4me3_exh_me & open_low_H3K27ac_exh_me)
-
-# Filtered memory subset for these rows, all memory columns
-repressing_exh_me <- combined_scaled_exh_me[select_rows_rep_exh_me, c(5:8, 13:16, 21:24, 29:32)]
-
-# Exclude rows that contain any zero in these memory columns
-repressing_exh_me <- repressing_exh_me[!apply(repressing_exh_me == 0, 1, any), ]
-
-# Check dimensions and rownames
-dim(repressing_exh_me)
-
-write.csv(repressing_exh_me, file= "files/closed_peaks_signal_exh_me.csv", row.names = T)
+#rm(top_rows, scaled_filled_EXN)
 ```
 
 
 ```{r}
-select_rows_b_exh_me <- which(open_high_H3K4me3_exh_me & closed_high_H3K27me3_exh_me)
-bivalent_exh_me <- combined_scaled_exh_me[select_rows_b_exh_me, c(5:8, 13:16, 21:24, 29:32)]
-bivalent_exh_me <- bivalent_exh_me[!apply(bivalent_exh_me == 0, 1, any), ]
+# List of all scaled matrices
+scaled_list_EXM <- list(scaled_signal_H3K4me3_EXM, scaled_signal_H3K27ac_EXM, scaled_signal_H3K27me3_EXM, scaled_signal_H3K9me3_EXM)
 
-dim(bivalent_exh_me)
+#rm(scaled_signal_H3K4me3_EXM, scaled_signal_H3K27ac_EXM, scaled_signal_H3K27me3_EXM, scaled_signal_H3K9me3_EXM)
 
-write.csv(bivalent_exh_me, file = "files/bivalent_exh_me.csv", row.names = T)
-rm(mem_H3K9me3_exh_me, mem_H3K27me3_exh_me, mem_H3K27ac_exh_me, mem_H3K4me3_exh_me)
+# Get union of all rownames (regions)
+all_regions_EXM <- Reduce(union, lapply(scaled_list_EXM, rownames))
+
+# Function to add missing rows with zeros and reorder rows by all_regions
+fill_missing_rows <- function(mat, all_rows) {
+  missing <- setdiff(all_rows, rownames(mat))
+  if(length(missing) > 0) {
+    # Create zero matrix for missing rows
+    zero_mat <- matrix(0, nrow = length(missing), ncol = ncol(mat),
+                       dimnames = list(missing, colnames(mat)))
+    # Bind existing matrix and zero rows
+    mat <- rbind(mat, zero_mat)
+  }
+  # Reorder rows
+  mat[all_rows, , drop = FALSE]
+}
+
+# Apply function to each scaled matrix
+scaled_filled_EXM <- lapply(scaled_list_EXM, fill_missing_rows, all_rows = all_regions_EXM)
+
+# Combine all columns together (all samples from all histone mods)
+combined_scaled_EXM <- do.call(cbind, scaled_filled_EXM)
 ```
 
+
+```{r}
+# Get colnames for each scaled matrix (samples)
+samples_H3K4me3  <- colnames(scaled_filled_EXM[[1]])
+samples_H3K27ac  <- colnames(scaled_filled_EXM[[2]])
+samples_H3K27me3 <- colnames(scaled_filled_EXM[[3]])
+samples_H3K9me3  <- colnames(scaled_filled_EXM[[4]])
+
+all_samples_EXM <- c(samples_H3K27ac, samples_H3K4me3, samples_H3K27me3, samples_H3K9me3)
+
+
+# Assuming 4 naive + 4 memory per histone modification, adjust if different
+annotation_col_3 <- data.frame(
+  CellType = rep(c("Memory T-Cell", "Exhausted T-Cell"), times = c(4,4)),
+  HistoneMark = rep(c( "H3K27ac", "H3K4me3", "H3K27me3", "H3K9me3"), each = 8))
+
+annotation_colors_3 <- list(
+  CellType = c("Memory T-Cell" = "#ff7f0e","Exhausted T-Cell"= "#4daf4a"),
+  HistoneMark = c(
+  "H3K4me3"   = "#ffd92f",  
+  "H3K27ac"   = "#D73027",  
+  "H3K27me3"  = "#a6cee3",  
+  "H3K9me3"   = "#6A5ACD"   
+)
+)
+
+
+rownames(annotation_col_3) <- colnames(combined_scaled_EXM)
+
+top_rows_EXM <- head(order(apply(combined_scaled_EXM, 1, var), decreasing = TRUE), 5000)
+
+
+all_hmap3 <- pheatmap::pheatmap(combined_scaled_EXM[top_rows_EXM, ],
+         color = my_colors, breaks = my_breaks, 
+         annotation_col = annotation_col_3,
+         annotation_colors = annotation_colors_3,
+         show_colnames = FALSE,
+         show_rownames = FALSE,
+         main = "Memory vs. Exhausted T-Cell",
+         cluster_rows = TRUE,
+         cluster_cols = F,
+         silent = TRUE)
+
+#rm(top_rows, scaled_filled_EXM)
+```
+
+
+```{r, fig.width=10, fig.height=20}
+grid.arrange(
+  all_hmap1$gtable, 
+  all_hmap2$gtable, 
+  all_hmap3$gtable, 
+  ncol = 1,
+  top = "Scaled Signal Intensity Across hPMTs"
+)
+```
+
+
+# Filtering and Exporting Regions of Interest for potential later use 
+
+### Naive and Memory 
+
+```{r}
+
+H3K4me3_MN  <- combined_scaled[, 5:8]
+H3K27ac_MN  <- combined_scaled[, 13:16]
+H3K27me3_MN <- combined_scaled[, 21:24]
+H3K9me3_MN  <- combined_scaled[, 29:32]
+
+# Activating High
+open_high_H3K4me3_MN  <- apply(H3K4me3_MN, 1, function(x) all(x >= 0))
+open_high_H3K27ac_MN  <- apply(H3K27ac_MN, 1, function(x) all(x >= 0))
+
+select_rows_MN <- which(open_high_H3K4me3_MN & open_high_H3K27ac_MN)
+
+memory_activating_MN <- combined_scaled[select_rows_MN, c(5:8, 13:16, 21:24, 29:32)]
+
+memory_activating_MN <- memory_activating_MN[!apply(memory_activating_MN == 0, 1, any), ]
+dim(memory_activating_MN)
+
+write.csv(memory_activating_MN, file = "files/memory_open_peaks_signal.csv", row.names = T)
+```
+
+```{r}
+# Repressed High
+closed_high_H3K27me3_MN <- apply(H3K27me3_MN, 1, function(x) all(x >= 0))
+closed_high_H3K9me3_MN  <- apply(H3K9me3_MN, 1, function(x) all(x >= 0))
+
+select_rows_rep_MN <- which(closed_high_H3K27me3_MN & closed_high_H3K9me3_MN)
+
+memory_repressing_MN <- combined_scaled[select_rows_rep_MN, c(5:8, 13:16, 21:24, 29:32)]
+memory_repressing_MN <- memory_repressing_MN[!apply(memory_repressing_MN == 0, 1, any), ]
+
+dim(memory_repressing_MN)
+
+write.csv(memory_repressing_MN, file= "files/memory_closed_peaks_signal.csv", row.names = T)
+```
+
+```{r}
+# Bivalent 
+
+select_rows_b_MN <- which(open_high_H3K4me3_MN & closed_high_H3K27me3_MN)
+
+memory_bivalent_MN <- combined_scaled[select_rows_b_MN, c(5:8, 13:16, 21:24, 29:32)]
+memory_bivalent_MN <- memory_bivalent_MN[!apply(memory_bivalent_MN == 0, 1, any), ]
+
+dim(memory_bivalent_MN)
+
+write.csv(memory_bivalent_MN, file = "files/memory_bivalent.csv", row.names = T)
+```
+Using this approach we decrease the size of the dataset for comparing naive and memory T cells to 308 peaks, which is substantially less than the initial 45174 peaks we looked at.
+
+### Naive and Exhausted
+```{r}
+# Activating High
+H3K4me3_EXN  <- combined_scaled_EXN[, 5:8]
+H3K27ac_EXN  <- combined_scaled_EXN[, 13:16]
+H3K27me3_EXN <- combined_scaled_EXN[, 21:24]
+H3K9me3_EXN  <- combined_scaled_EXN[, 29:32]
+
+open_high_H3K4me3_EXN  <- apply(H3K4me3_EXN, 1, function(x) all(x >= 0))
+open_high_H3K27ac_EXN  <- apply(H3K27ac_EXN, 1, function(x) all(x >= 0))
+
+select_rows_EXN <- which(open_high_H3K4me3_EXN & open_high_H3K27ac_EXN) 
+activating_EXN <- combined_scaled_EXN[select_rows_EXN, c(5:8, 13:16, 21:24, 29:32)]
+activating_EXN <- activating_EXN[!apply(activating_EXN == 0, 1, any), ]
+
+dim(activating_EXN)
+
+write.csv(activating_EXN, file = "files/open_peaks_signal_EXN.csv", row.names = T)
+```
+
+```{r}
+# Repressing High
+closed_high_H3K27me3_EXN <- apply(H3K27me3_EXN, 1, function(x) all(x >= 0))
+closed_high_H3K9me3_EXN  <- apply(H3K9me3_EXN, 1, function(x) all(x >= 0))
+
+
+select_rows_rep_EXN <- which(closed_high_H3K27me3_EXN & closed_high_H3K9me3_EXN) 
+
+repressing_EXN <- combined_scaled_EXN[select_rows_rep_EXN, c(5:8, 13:16, 21:24, 29:32)]
+repressing_EXN <- repressing_EXN[!apply(repressing_EXN == 0, 1, any), ]
+
+dim(repressing_EXN)
+
+write.csv(repressing_EXN, file= "files/closed_peaks_signal_EXN.csv", row.names = T)
+```
+
+
+```{r}
+# Bivalent
+select_rows_b_EXN <- which(open_high_H3K4me3_EXN & closed_high_H3K27me3_EXN)
+bivalent_EXN <- combined_scaled_EXN[select_rows_b_EXN, c(5:8, 13:16, 21:24, 29:32)]
+bivalent_EXN <- bivalent_EXN[!apply(bivalent_EXN == 0, 1, any), ]
+
+dim(bivalent_EXN)
+
+write.csv(bivalent_EXN, file = "files/bivalent_EXN.csv", row.names = T)
+```
+
+
+### Exhausted and Memory
+```{r}
+# Activating High
+H3K4me3_EXM  <- combined_scaled_EXM[, 5:8]
+H3K27ac_EXM  <- combined_scaled_EXM[, 13:16]
+H3K27me3_EXM <- combined_scaled_EXM[, 21:24]
+H3K9me3_EXM  <- combined_scaled_EXM[, 29:32]
+
+open_high_H3K4me3_EXM  <- apply(H3K4me3_EXM, 1, function(x) all(x >= 0))
+open_high_H3K27ac_EXM  <- apply(H3K27ac_EXM, 1, function(x) all(x >= 0))
+
+select_rows_EXM <- which(open_high_H3K4me3_EXM & open_high_H3K27ac_EXM) 
+
+activating_EXM <- combined_scaled_EXM[select_rows_EXM, c(5:8, 13:16, 21:24, 29:32)]
+activating_EXM <- activating_EXM[!apply(activating_EXM == 0, 1, any), ]
+
+dim(activating_EXM)
+
+write.csv(activating_EXM, file = "files/open_peaks_signal_EXM.csv", row.names = T)
+```
+
+```{r}
+# Repressing High
+
+closed_high_H3K27me3_EXM <- apply(H3K27me3_EXM, 1, function(x) all(x >= 0))
+closed_high_H3K9me3_EXM  <- apply(H3K9me3_EXM, 1, function(x) all(x >= 0))
+
+select_rows_rep_EXM <- which(closed_high_H3K27me3_EXM & closed_high_H3K9me3_EXM) 
+
+repressing_EXM <- combined_scaled[select_rows_rep_EXM, c(5:8, 13:16, 21:24, 29:32)]
+
+repressing_EXM <- repressing_EXM[!apply(repressing_EXM == 0, 1, any), ]
+
+dim(repressing_EXM)
+write.csv(repressing_EXM, file= "files/closed_peaks_signal_EXM.csv", row.names = T)
+```
+
+
+```{r}
+# Bivalent
+select_rows_b_EXM <- which(open_high_H3K4me3_EXM & closed_high_H3K27me3_EXM)
+bivalent_EXM <- combined_scaled[select_rows_b_EXM, c(5:8, 13:16, 21:24, 29:32)]
+bivalent_EXM <- bivalent_EXM[!apply(bivalent_EXM == 0, 1, any), ]
+
+dim(bivalent_EXM)
+
+write.csv(bivalent_EXM, file = "files/bivalent_EXM.csv", row.names = T)
+```
+
+
+```{r, warning=T, include = F, eval=F}
+#rm(list = ls())
+```
