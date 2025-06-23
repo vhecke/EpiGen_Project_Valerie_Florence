@@ -1,0 +1,49 @@
+---
+title: "signal ranks"
+author: "Valerie Heckendorn"
+date: "2025-06-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include = FALSE}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(ensembldb)
+  library(GenomicRanges)
+  library(epiwraps)
+  library(rtracklayer)
+  library(ggplot2)
+  library(magick)
+  library(R.utils) 
+  library(MASS)
+})
+```
+
+#Import Files
+```{r}
+bw_exhausted_H3K27ac <- import("H3K27ac_EX.bw", format="bigWig")
+head(bw_exhausted_H3K27ac)
+summary(mcols(bw_exhausted_H3K27ac)$score)
+#extract signal values
+signal_scores_exh_H3K27ac <- mcols(bw_exhausted_H3K27ac)$score
+#rank score
+ranked_scores_exh_H3K27ac <- sort(signal_scores_exh_H3K27ac, decreasing = TRUE)
+df_exhausted_H3K27ac <- data.frame(rank = seq_along(ranked_scores_exh_H3K27ac), signal = ranked_scores_exh_H3K27ac)
+#ggplot ranked signals
+ggplot(df_exhausted_H3K27ac, aes(x = rank, y = signal)) +
+  geom_line(color = "darkgreen") +
+  scale_y_log10() +
+  labs(
+    title = "Signal Rank Plot (log scale)",
+    x = "Rank",
+    y = "Signal (log10)"
+  ) +
+  theme_minimal()
+```
+
+
+
