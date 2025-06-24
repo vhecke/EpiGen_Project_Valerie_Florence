@@ -80,6 +80,7 @@ For analysis of the different histone modfications, the peaks and tracks were pl
 
 ## Peaks and Histone modifications
 ```{r}
+dir.create("peaks")
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FCTCF%5FwID%2Etxt%2Egz", "peaks/CTCF.txt.gz")
 gunzip("peaks/CTCF.txt.gz")
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K27ac%5FwID%2Etxt%2Egz", "peaks/H3K27ac_wID.txt.gz")
@@ -101,21 +102,22 @@ For Naive and Memory cell comparison, day 30 and replicate 1 were chosen.
 ```{r}
 options(timeout = 12000)
 
+dir.create("BW")
 # Key Activating
 
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699095&format=file&file=GSM8699095%5FNaive%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS1%2Escale%2Ebw", "H3K4me3_naive_30.bw.gz")
-gunzip("H3K4me3_naive_30.bw.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699095&format=file&file=GSM8699095%5FNaive%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS1%2Escale%2Ebw", "BW/H3K4me3_naive_30.bw.gz")
+gunzip("BW/H3K4me3_naive_30.bw.gz")
 
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699079&format=file&file=GSM8699079%5FNaive%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS1%2Escale%2Ebw", "H3K27ac_naive_30.bw.gz")
-gunzip("H3K27ac_naive_30.bw.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699079&format=file&file=GSM8699079%5FNaive%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS1%2Escale%2Ebw", "BW/H3K27ac_naive_30.bw.gz")
+gunzip("BW/H3K27ac_naive_30.bw.gz")
 
 # KeyRepressive
 
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699111&format=file&file=GSM8699111%5FNaive%5FP14%5FDay30%5FH3K27me3%5FRep2%5FS6%2Escale%2Ebw", "H3K27me3_naive_30.bw.gz")
-gunzip("H3K27me3_naive_30.bw.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699111&format=file&file=GSM8699111%5FNaive%5FP14%5FDay30%5FH3K27me3%5FRep2%5FS6%2Escale%2Ebw", "BW/H3K27me3_naive_30.bw.gz")
+gunzip("BW/H3K27me3_naive_30.bw.gz")
 
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699127&format=file&file=GSM8699127%5FNaive%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS1%2Escale%2Ebw", "H3K9me3_naive_30.bw.gz")
-gunzip("H3K9me3_naive_30.bw.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699127&format=file&file=GSM8699127%5FNaive%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS1%2Escale%2Ebw", "BW/H3K9me3_naive_30.bw.gz")
+gunzip("BW/H3K9me3_naive_30.bw.gz")
 
 
 ```
@@ -125,17 +127,17 @@ gunzip("H3K9me3_naive_30.bw.gz")
 ```{r}
 options(timeout = 12000)
 
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699103&format=file&file=GSM8699103%5FArm%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS5%2Escale%2Ebw", "H3K4me3_memory.bw.gz")
-gunzip("H3K4me3_memory.bw.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699103&format=file&file=GSM8699103%5FArm%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS5%2Escale%2Ebw", "BW/H3K4me3_memory.bw.gz")
+gunzip("BW/H3K4me3_memory.bw.gz")
 
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699087&format=file&file=GSM8699087%5FArm%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS5%2Escale%2Ebw", "H3K27ac_memory.bw.gz")
-gunzip("H3K27ac_memory.bw.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699087&format=file&file=GSM8699087%5FArm%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS5%2Escale%2Ebw", "BW/H3K27ac_memory.bw.gz")
+gunzip("BW/H3K27ac_memory.bw.gz")
 
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699119&format=file&file=GSM8699119%5FArm%5FP14%5FDay30%5FH3K27me3%5FRep1%5FS7%2Escale%2Ebw", "H3K27me3_memory.bw.gz")
-gunzip("H3K27me3_memory.bw.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699119&format=file&file=GSM8699119%5FArm%5FP14%5FDay30%5FH3K27me3%5FRep1%5FS7%2Escale%2Ebw", "BW/H3K27me3_memory.bw.gz")
+gunzip("BW/H3K27me3_memory.bw.gz")
 
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699135&format=file&file=GSM8699135%5FArm%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS3%2Escale%2Ebw", "H3K9me3_memory.bw.gz")
-gunzip("H3K9me3_memory.bw.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699135&format=file&file=GSM8699135%5FArm%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS3%2Escale%2Ebw", "BW/H3K9me3_memory.bw.gz")
+gunzip("BW/H3K9me3_memory.bw.gz")
 
 ```
 
@@ -145,20 +147,20 @@ gunzip("H3K9me3_memory.bw.gz")
 options(timeout = 12000)
 
 #H3K27ac, Day32, rep1
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699091&format=file&file=GSM8699091%5FCl13%5FP14%5FDay32%5FH3K27ac%5FRep1%5FS13%2Escale%2Ebw", "H3K27ac_EX.bw")
-H3K27ac_EX <- rtracklayer::import("H3K27ac_EX.bw", format = "bw")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699091&format=file&file=GSM8699091%5FCl13%5FP14%5FDay32%5FH3K27ac%5FRep1%5FS13%2Escale%2Ebw", "BW/H3K27ac_EX.bw.gz")
+gunzip("BW/H3K27ac_EX.bw.gz")
 
 #H3K27me3, Day32, rep1
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699123&format=file&file=GSM8699123%5FCl13%5FP14%5FDay32%5FH3K27me3%5FRep1%5FS9%2Escale%2Ebw", "H3K27me3_EX.bw")
-H3K27me3_EX <- rtracklayer::import("H3K27me3_EX.bw", format = "bw")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699123&format=file&file=GSM8699123%5FCl13%5FP14%5FDay32%5FH3K27me3%5FRep1%5FS9%2Escale%2Ebw", "BW/H3K27me3_EX.bw.gz")
+gunzip("BW/H3K27me3_EX.bw.gz")
 
 #H3K4me3, Day32, rep1
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699107&format=file&file=GSM8699107%5FCl13%5FP14%5FDay32%5FH3K4me3%5FRep1%5FS13%2Escale%2Ebw", "H3K4me3_EX.bw")
-H3K4me3_EX <- rtracklayer::import("H3K4me3_EX.bw", format = "bw")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699107&format=file&file=GSM8699107%5FCl13%5FP14%5FDay32%5FH3K4me3%5FRep1%5FS13%2Escale%2Ebw", "BW/H3K4me3_EX.bw.gz")
+gunzip("BW/H3K4me3_EX.bw.gz")
 
 #H3K9me3, Day32, rep1
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699139&format=file&file=GSM8699139%5FCl13%5FP14%5FDay32%5FH3K9me3%5FRep1%5FS5%2Escale%2Ebw", "H3K9me3_EX.bw")
-H3K9me3_EX <- rtracklayer::import("H3K9me3_EX.bw", format = "bw")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699139&format=file&file=GSM8699139%5FCl13%5FP14%5FDay32%5FH3K9me3%5FRep1%5FS5%2Escale%2Ebw", "BW/H3K9me3_EX.bw.gz")
+gunzip("BW/H3K9me3_EX.bw.gz")
 
 ```
 

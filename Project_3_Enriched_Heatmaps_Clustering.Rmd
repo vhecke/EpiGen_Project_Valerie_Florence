@@ -1,0 +1,167 @@
+---
+title: "BW_Files_Analysis_Project"
+author: "Florence Marti"
+date: "2025-06-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence")
+```
+
+```{r, include = FALSE}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(ensembldb)
+  library(GenomicRanges)
+  library(epiwraps)
+  library(rtracklayer)
+  library(ggplot2)
+  library(magick)
+  library(R.utils) 
+  library(MASS)
+  library(org.Mm.eg.db)
+  library(AnnotationDbi)
+  library(valr)
+  library(EnrichedHeatmap)
+  library(gridExtra)
+  library(grid)
+  library(motifmatchr)
+  library(MotifDb)
+  library(universalmotif)
+  library(PWMEnrich)
+})
+```
+
+```{r}
+ah <- AnnotationHub(localHub=TRUE)
+ensdb <- ah[["AH89211"]] # mouse ensembldb object
+genes <- genes(ensdb)
+```
+
+# Comparing the histone modifications of naive T cells
+First reinporting the GRanges files of all the peaks
+```{r}
+peaks_part1 <- GRangesList(
+  H3K27ac = import("peak_bed_files/H3K27ac_peaks.bed"),
+  H3K27me3 = import("peak_bed_files/H3K27me3_peaks.bed"),
+  H3K4me3 = import("peak_bed_files/H3K4me3_peaks.bed"),
+  H3K9me3 = import("peak_bed_files/H3K9me3_peaks.bed")
+)
+
+```
+When trying to apply the filters from the lecture (w10), we were left with 0 values. this is why we proceeded with all of the values 
+- one idea might be to apply the significant rows that we found in the part prior
+
+```{r}
+# Naive
+bwfiles_naive <- list.files("bigwig_files", pattern = "_naive.bw$", full.names = TRUE)
+names(bwfiles_naive) <- gsub("\\.bw$", "", basename(bwfiles_naive))
+naive_regions <- reduce(unlist(GRangesList(peaks_part1)))
+sm_n <- signal2Matrix(bwfiles_naive, regions = naive_regions, w = 40)
+
+# Memory
+bwfiles_memory <- list.files("bigwig_files", pattern = "_memory.bw$", full.names = TRUE)
+names(bwfiles_memory) <- gsub("\\.bw$", "", basename(bwfiles_memory))
+memory_regions <- reduce(unlist(GRangesList(peaks_part1)))
+sm_m <- signal2Matrix(bwfiles_memory, regions = memory_regions, w = 40)
+
+# Exhausted
+bwfiles_exh <- list.files("bigwig_files", pattern = "_EX.bw$", full.names = TRUE)
+names(bwfiles_exh) <- gsub("\\.bw$", "", basename(bwfiles_exh))
+exh_regions <- reduce(unlist(GRangesList(peaks_part1)))
+sm_e <- signal2Matrix(bwfiles_exh, regions = exh_regions, w = 40)
+
+```
+
+```{r}
+sm_m1 <- sm_m[1:5000,]
+sm_n1 <- sm_n[1:5000,]
+sm_e1<- sm_e[1:5000,]
+```
+
+
+```{r, fig.height= 5, fig.width=10}
+plotEnrichedHeatmaps(sm_n1, multiScale = T, cluster_rows = T, show_row_dend = T)
+```
+
+
+```{r, fig.height= 5, fig.width=10}
+plotEnrichedHeatmaps(sm_m1,  multiScale = T, cluster_rows = T, show_row_dend = T)
+```
+
+
+```{r, fig.height= 5, fig.width=10}
+plotEnrichedHeatmaps(sm_e1,  multiScale = T, cluster_rows = T, show_row_dend = T)
+```
+
+# Clustering
+
+Finding the best kmeans for clustering of the samples
+```{r}
+cl_n <- clusterSignalMatrices(sm_n1, k=2:7)
+cluster1 <- ggplot(cl_n$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained") + ggtitle("Cluster Signal Matrix Naive T-Cells")  + theme_minimal()
+
+cl_m <- clusterSignalMatrices(sm_m1, k=2:7)
+cluster2 <- ggplot(cl_m$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained") + ggtitle("Cluster Signal Matrix Memory T-Cells") + theme_minimal()
+
+cl_e <- clusterSignalMatrices(sm_e1, k=2:7)
+cluster3 <- ggplot(cl_e$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained")+ ggtitle("Cluster Signal Matrix Exhausted T-Cells") + theme_minimal()
+```
+```{r, fig.height= 10, fig.width=10}
+grid.arrange(cluster1, cluster2, cluster3,
+             ncol = 1,
+             top = "K-Means Clustering: Variance Explained per k")
+
+```
+
+
+
+```{r}
+set.seed(123)  # to ensure that it gives the same results everytime
+cl_k_n <- clusterSignalMatrices(sm_n1, k=6)
+cl_k_m <- clusterSignalMatrices(sm_m1, k=6)
+cl_k_e <- clusterSignalMatrices(sm_e1, k=6)
+```
+using k = 6 we have an average 95% of the variance explained.
+
+## Adding clusters to the signal matrices and plotting the enriched heatmaps
+
+```{r}
+rowData(sm_n1)$cluster <- cl_k_n
+rowData(sm_m1)$cluster <- cl_k_m
+rowData(sm_e1)$cluster <- cl_k_e
+
+mycolors <- c("1"="pink", "2"="lightblue", "3"="darkgreen", "4"="orange", "5"="purple", "6"="blue")
+plotEnrichedHeatmaps(sm_n1, row_split="cluster", mean_color=mycolors, colors=c("white","darkred"))
+```
+
+
+```{r}
+plotEnrichedHeatmaps(sm_m1, row_split="cluster", mean_color=mycolors, colors=c("white","darkred"))
+```
+
+
+```{r}
+plotEnrichedHeatmaps(sm_e1, row_split="cluster", mean_color=mycolors, colors=c("white","darkred"))
+```
+
+## 
+
+```{r}
+naive <- meltSignals(sm_n1, splitBy=cl_k_n)
+memory <- meltSignals(sm_m1, splitBy=cl_k_m)
+exhausted <- meltSignals(sm_e1, splitBy=cl_k_e)
+
+melt1 <- ggplot(naive, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split) + ggtitle("Naive T-Cells")
+melt2 <- ggplot(memory, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split) + ggtitle("Memory T-Cells")
+melt3 <- ggplot(exhausted, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split) + ggtitle("Exhausted T-Cells")
+```
+
+```{r, fig.height = 10, fig.width=8}
+library(cowplot)
+
+plot_grid(melt1, melt2, melt3, ncol = 1)
+```
+
