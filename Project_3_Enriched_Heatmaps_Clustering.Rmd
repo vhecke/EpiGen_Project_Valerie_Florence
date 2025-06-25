@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence/Histone Modifications Memory")
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence")
 ```
 
 ```{r, include = FALSE}
@@ -84,28 +84,39 @@ sm_e1<- sm_e[1:5000,]
 
 ```{r, fig.height= 5, fig.width=10}
 plotEnrichedHeatmaps(sm_n1, multiScale = T, cluster_rows = T, show_row_dend = T)
+```
 
+
+```{r, fig.height= 5, fig.width=10}
 plotEnrichedHeatmaps(sm_m1,  multiScale = T, cluster_rows = T, show_row_dend = T)
+```
+
+
+```{r, fig.height= 5, fig.width=10}
 plotEnrichedHeatmaps(sm_e1,  multiScale = T, cluster_rows = T, show_row_dend = T)
 ```
+
 # Clustering
 
 Finding the best kmeans for clustering of the samples
 ```{r}
-cl_n <- clusterSignalMatrices(sm_n1, k=2:10)
-ggplot(cl_n$varExplained, aes(k, varExplained)) + geom_line()
+cl_n <- clusterSignalMatrices(sm_n1, k=2:7)
+cluster1 <- ggplot(cl_n$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained") + ggtitle("Cluster Signal Matrix Naive T-Cells")  + theme_minimal()
+
+cl_m <- clusterSignalMatrices(sm_m1, k=2:7)
+cluster2 <- ggplot(cl_m$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained") + ggtitle("Cluster Signal Matrix Memory T-Cells") + theme_minimal()
+
+cl_e <- clusterSignalMatrices(sm_e1, k=2:7)
+cluster3 <- ggplot(cl_e$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained")+ ggtitle("Cluster Signal Matrix Exhausted T-Cells") + theme_minimal()
+```
+```{r, fig.height= 10, fig.width=10}
+grid.arrange(cluster1, cluster2, cluster3,
+             ncol = 1,
+             top = "K-Means Clustering: Variance Explained per k")
 
 ```
 
-```{r}
-cl_m <- clusterSignalMatrices(sm_m1, k=2:10)
-ggplot(cl_m$varExplained, aes(k, varExplained)) + geom_line()
-```
 
-```{r}
-cl_e <- clusterSignalMatrices(sm_e1, k=2:10)
-ggplot(cl_e$varExplained, aes(k, varExplained)) + geom_line()
-```
 
 ```{r}
 set.seed(123)  # to ensure that it gives the same results everytime
@@ -115,80 +126,42 @@ cl_k_e <- clusterSignalMatrices(sm_e1, k=6)
 ```
 using k = 6 we have an average 95% of the variance explained.
 
+## Adding clusters to the signal matrices and plotting the enriched heatmaps
+
 ```{r}
 rowData(sm_n1)$cluster <- cl_k_n
 rowData(sm_m1)$cluster <- cl_k_m
 rowData(sm_e1)$cluster <- cl_k_e
-```
 
-```{r}
 mycolors <- c("1"="pink", "2"="lightblue", "3"="darkgreen", "4"="orange", "5"="purple", "6"="blue")
 plotEnrichedHeatmaps(sm_n1, row_split="cluster", mean_color=mycolors, colors=c("white","darkred"))
 ```
+
+
 ```{r}
 plotEnrichedHeatmaps(sm_m1, row_split="cluster", mean_color=mycolors, colors=c("white","darkred"))
 ```
+
 
 ```{r}
 plotEnrichedHeatmaps(sm_e1, row_split="cluster", mean_color=mycolors, colors=c("white","darkred"))
 ```
 
+## 
+
 ```{r}
 naive <- meltSignals(sm_n1, splitBy=cl_k_n)
-ggplot(naive, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split)
-```
-```{r}
 memory <- meltSignals(sm_m1, splitBy=cl_k_m)
-ggplot(memory, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split)
-```
-
-```{r}
 exhausted <- meltSignals(sm_e1, splitBy=cl_k_e)
-ggplot(exhausted, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split)
-```
-Visualising a single region (w6)
-```{r}
-plotSignalTracks(files = bwfiles_naive, region = peaks_part1$H3K27ac[1], extend=5000, tracks.params = list(ylim=c(0,170)), 
-                  ensdb = ensdb,  transcripts = "full" )
-plotSignalTracks(files = bw_files, region = peaks_part1$H3K4me3[1], extend=5000, tracks.params = list(ylim=c(0,170)), 
-                  ensdb = ensdb,  transcripts = "full" )
-plotSignalTracks(files = bw_files, region = peaks_part1$H3K27me3[1], extend=5000, tracks.params = list(ylim=c(0,170)), 
-                  ensdb = ensdb,  transcripts = "full" )
-plotSignalTracks(files = bw_files, region = peaks_part1$H3K9me3[1], extend=5000, tracks.params = list(ylim=c(0,170)), 
-                  ensdb = ensdb,  transcripts = "full" )
+
+melt1 <- ggplot(naive, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split) + ggtitle("Naive T-Cells")
+melt2 <- ggplot(memory, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split) + ggtitle("Memory T-Cells")
+melt3 <- ggplot(exhausted, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split) + ggtitle("Exhausted T-Cells")
 ```
 
-Generating coverage tracks
-```{r}
+```{r, fig.height = 10, fig.width=8}
+library(cowplot)
 
-```
-
-
-
-
-```{r}
-```
-Comparing the enriched heatmaps of all of the peaks and the peaks we filtered out as significant
-
-```{r}
-plotEnrichedHeatmaps(sm_n, trim = 0.05)
-```
-
-
-```{r}
-plotEnrichedHeatmaps(sm_n_filtered, trim = 0.05)
-```
-```{r}
-plotEnrichedHeatmaps(sm_m, trim=0.05)
-```
-
-
-```{r}
-plotEnrichedHeatmaps(sm_m, trim=0.05)
-
-meanEnrichment <- rowMeans(score(sm_m))
-sm_m_2 <- sm_m[which(meanEnrichment >= median(meanEnrichment)),]
-
-plotEnrichedHeatmaps(sm_m_2)
+plot_grid(melt1, melt2, melt3, ncol = 1)
 ```
 

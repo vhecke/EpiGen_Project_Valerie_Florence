@@ -1,5 +1,5 @@
 ---
-title: "Project_2.2_Histone_Modifications_BG_"
+title: "Project_2_Filtering_and_Annotation"
 author: "Florence Marti"
 date: "2025-06-11"
 output: html_document
@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence/Histone Modifications Memory")
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence")
 ```
 
 ```{r, include = FALSE}
@@ -31,41 +31,46 @@ suppressPackageStartupMessages({
   library(plyranges)
   library(dplyr)
 })
+```
 
+
+```{r, include = T}
 # Setting my heatmap colour right in the beginning
-my_colors <- colorRampPalette(c("blue", "white", "red"))(100)
 my_breaks <- seq(-2, 2, length.out = 101)
 ```
 
 ## Importing the downloaded data
 
-```{r}
+```{r, tab.cap="Table 1. Overview of contents of txt files available for download."}
 head(read.table("peaks/H3K27ac.txt", header = TRUE))
 ```
+In our txt files we find the information about the peak number, the chromosome where the peak is located, the start and end base, as well as the length.The file includes the normalised counts for all four replicates of our four (Naïve D30, Naïve D32, Memory, Exhausted) T-cell types. 
 
 ```{r}
-CTCF_df <- read.table("peaks/CTCF.txt", header = TRUE)
+# CTCF is 
+#CTCF_df <- read.table("peaks/CTCF.txt", header = TRUE)
 H3K27ac_df <- read.table("peaks/H3K27ac.txt", header = TRUE)
 H3K27me3_df <- read.table("peaks/H3K27me3.txt", header = TRUE)
 H3K4me3_df <- read.table("peaks/H3K4me3.txt", header = TRUE)
 H3K9me3_df <- read.table("peaks/H3K9me3.txt", header = TRUE)
 
-# test to see what happens if we exlude these columns
+# Columns for D32 Naïve T-Cells were excluded for comparability of the results. 
+
 H3K27ac_df <- H3K27ac_df[, -c(11:14)]
 H3K27me3_df <- H3K27me3_df[, -c(11:14)]
 H3K4me3_df <- H3K4me3_df[, -c(11:14)]
 H3K9me3_df <- H3K9me3_df[, -c(11:14)]
 
-# GRanges
-CTCF_gr <- GRanges(seqnames = CTCF_df$Chr, ranges = IRanges(start = CTCF_df$Start, end = CTCF_df$End))
+# Converting the txt files to GRanges files
+#CTCF_gr <- GRanges(seqnames = CTCF_df$Chr, ranges = IRanges(start = CTCF_df$Start, end = CTCF_df$End))
 H3K27ac_gr <- GRanges(seqnames = H3K27ac_df$Chr, ranges = IRanges(start = H3K27ac_df$Start, end = H3K27ac_df$End))
 H3K27me3_gr <- GRanges(seqnames = H3K27me3_df$Chr, ranges = IRanges(start = H3K27me3_df$Start, end = H3K27me3_df$End))
 H3K4me3_gr <- GRanges(seqnames = H3K4me3_df$Chr, ranges = IRanges(start = H3K4me3_df$Start, end = H3K4me3_df$End))
 H3K9me3_gr <- GRanges(seqnames = H3K9me3_df$Chr, ranges = IRanges(start = H3K9me3_df$Start, end = H3K9me3_df$End))
 
-
+# Extracting the peaks of all available 
 peaks <- GRangesList(
-  CTCF = CTCF_gr,
+  #CTCF = CTCF_gr,
   H3K27ac = H3K27ac_gr,
   H3K27me3 = H3K27me3_gr,
   H3K4me3 = H3K4me3_gr,
@@ -73,7 +78,7 @@ peaks <- GRangesList(
 )
 
 dir.create("peak_bed_files")
-rtracklayer::export(peaks$CTCF, "peak_bed_files/CTCF_peaks.bed")
+#rtracklayer::export(peaks$CTCF, "peak_bed_files/CTCF_peaks.bed")
 rtracklayer::export(peaks$H3K27ac, "peak_bed_files/H3K27ac_peaks.bed")
 rtracklayer::export(peaks$H3K27me3, "peak_bed_files/H3K27me3_peaks.bed")
 rtracklayer::export(peaks$H3K4me3, "peak_bed_files/H3K4me3_peaks.bed")
@@ -81,15 +86,20 @@ rtracklayer::export(peaks$H3K9me3, "peak_bed_files/H3K9me3_peaks.bed")
 
 ```
 
-```{r, fig.cap="Figure 1. UpSet plot showing the overlap of genomic regions (peaks) identified for each histone modification (H3K4me3, H3K27ac, H3K27me3, H3K9me3) in naive and memory T cells. This visualization highlights the extent of shared and unique chromatin regions across hPMTs."}
+
+```{r, fig.cap="Figure 1. UpSet plot showing the overlap of genomic regions (peaks) identified for each hPMT (H3K4me3, H3K27ac, H3K27me3, H3K9me3) in naïve, memory, and exhausted T-cells. The plot displays the intersection sizes of peak sets for individual and combined histone modifications. Horizontal bars on the left indicate the total number of peaks detected for each mark, while vertical bars represent the number of genomic regions shared among specific combinations of modifications, as indicated by the connected dots below each bar."}
 regionUpset(peaks)
 ```
-In this upset plot we show that while we have a lot of single hits, we also have 7611 bivalent regions for H3K27me3, and H3K4me3. 
+
+The UpSet plot reveals substantial overlap as well as unique sets of genomic regions marked by each histone modification. The largest intersection (13,671 regions) corresponds to peaks uniquely associated with H3K27ac, highlighting its broad distribution. Notably, thousands of regions are marked exclusively by individual modifications (e.g., 7,224 for H3K9me3 and 7,138 for H3K27me3), while smaller subsets of peaks are co-occupied by multiple marks, reflecting combinatorial chromatin states. These patterns underscore both the specificity and redundancy of histone modification landscapes in T cells, with distinct and overlapping regulatory regions contributing to the epigenetic diversity observed across naïve, memory, and exhausted states.
 
 
 ## Quality Control
 
 ### PCA
+A principal component analysis (PCA) was performed to see how the different cell types within the hPMT would cluster to visualise first differences between the samples and hPMTs. 
+
+#### Clustering by Cell Type
 
 ```{r}
 H3K27ac_PCA <- H3K27ac_df[,7:18]
@@ -116,12 +126,12 @@ run_pca <- function(signal_matrix, mark_name) {
   pca_df <- data.frame(
     PC1 = pca_result$x[, 1],
     PC2 = pca_result$x[, 2],
-    CellType = rep(c("Naive_30", "Memory", "Exhausted"), each = 4)
+    CellType = rep(c("Naïve", "Memory", "Exhausted"), each = 4)
   )
   
   ggplot(pca_df, aes(PC1, PC2, color = CellType)) +
   geom_point(size = 4,) +
-  scale_color_manual(values = c("Naive_30" = "#ef77b4", "Memory" = "#ff7f0e", "Exhausted" = "#4daf4a" )) +
+  scale_color_manual(values = c("Naïve" = "#ef77b4", "Memory" = "#ff7f0e", "Exhausted" = "#4daf4a" )) +
     labs(
       title = paste("PCA of", mark_name, "Signal"),
       x = paste0("PC1 (", round(variance[1]*100, 1), "%)"),
@@ -131,14 +141,13 @@ run_pca <- function(signal_matrix, mark_name) {
 }
 
 
-
 plot_H3K27ac <- run_pca(H3K27ac_PCA, "H3K27ac")
 plot_H3K4me3 <- run_pca(H3K4me3_PCA, "H3K4me3")
 plot_H3K27me3 <- run_pca(H3K27me3_PCA, "H3K27me3")
 plot_H3K9me3 <- run_pca(H3K9me3_PCA, "H3K9me3")
 ```
 
-```{r}
+```{r, fig.cap = "Figure 2. PCA of normalised hPMT signals (H3K27ac, H3K4me3, H3K27me3, H3K9me3) across naïve, memory, and exhausted T cell states. Each panel shows the distribution of samples by cell type for a specific histone mark, with points colored according to cell type. The axes represent the first two principal components, indicating the proportion of variance explained. Clear separation between cell types is observed for each modification, highlighting distinct epigenetic landscapes among naïve, memory, and exhausted T cells"}
 library(gridExtra)
 grid.arrange(
   plot_H3K27ac, plot_H3K4me3,
@@ -147,6 +156,11 @@ grid.arrange(
   top = "PCA of hPMTs Across all Cell Types"
 )
 ```
+
+The PCA plots in Figure 2 show clear segregation of naïve, memory, and exhausted T-cell samples based on their hPMT.  For each histone mark — H3K27ac, H3K4me3, H3K27me3, and H3K9me3 — samples cluster according to cell type. This consistent separation across all four hPMTs indicates that each T-cell state is characterised by a unique chromatin landscape. The tight clustering of replicates within each cell type further demonstrates the reproducibility of the data and the robust epigenetic differences that accompany T-cell differentiation and exhaustion.
+
+#### Clustering by hPMT
+
 ```{r}
 H3K27ac_PCA <- H3K27ac_PCA %>% tibble::rownames_to_column("peakID")
 H3K4me3_PCA <- H3K4me3_PCA %>% tibble::rownames_to_column("peakID")
@@ -164,16 +178,11 @@ combined_signals <- list(
 rownames(combined_signals) <- combined_signals$peakID
 combined_signals$peakID <- NULL
 
-dim(combined_signals)
-
-```
-```{r}
-
 pca_input <- t(combined_signals) 
 pca_result <- prcomp(pca_input, scale. = TRUE)
 
 annotation_col <- data.frame(
-  CellType = rep(rep(c("Naive_30", "Memory", "Exhausted"), each = 4), times = 4),
+  CellType = rep(rep(c("Naïve", "Memory", "Exhausted"), each = 4), times = 4),
   HistoneMark = rep(c("H3K4me3", "H3K27ac", "H3K27me3", "H3K9me3"), each = 12)
 )
 
@@ -185,12 +194,15 @@ pca_df <- data.frame(
   CellType = annotation_col$CellType,
   HistoneMark = annotation_col$HistoneMark
 )
+```
 
+
+```{r, fig.cap = "Figure 3. PCA of normalised signals for four histone marks (H3K27ac, H3K4me3, H3K27me3, H3K9me3) in naïve, memory, and exhausted T cells. Each point represents a sample, colored by cell type and shaped by histone mark. The first two principal components (PC1 and PC2) explain 40.5% and 25.1% of the variance, respectively. The PCA shows clear separation of samples according to both hPMT and cell state, with distinct clustering patterns for each histone mark."}
 # Plot with custom aesthetics
-library(ggplot2)
+
 ggplot(pca_df, aes(PC1, PC2, color = CellType, shape = HistoneMark)) +
   geom_point(size = 4, alpha = 0.8) +
-  scale_color_manual(values = c("Naive_30" = "#ef77b4", "Memory" = "#ff7f0e", "Exhausted" = "#4daf4a")) +
+  scale_color_manual(values = c("Naïve" = "#ef77b4", "Memory" = "#ff7f0e", "Exhausted" = "#4daf4a")) +
   scale_shape_manual(values = c(16, 17, 15, 18)) +  # Different shapes for marks
   theme_classic() +
   labs(
@@ -203,33 +215,36 @@ ggplot(pca_df, aes(PC1, PC2, color = CellType, shape = HistoneMark)) +
 ```
 
 
-# Signal Extraction and Filtering
-Signal intensities for naive and memory T cells were extracted, and mean values per group were calculated for each peak. We extracted the signal values from the GRanges files for each histone modification and cell type and then computed log2 fold changes and filtered for regions with significant differences (absolute log2(signal) > 0.58496), focusing on biologically relevant changes in chromatin accessibility.
+This PCA demonstrates that the global patterns of hPMTs distinctly separate both by mark and by T cell state. Samples cluster tightly by hPMT (shape), and within each mark, further group by cell type (color), indicating that both the choice of histone mark and the differentiation state of the T cell are major drivers of epigenetic variation. The absence of overlap between hPMT driven clusters suggests robust and reproducible differences in chromatin state among naïve, memory, and exhausted T cells. 
+
+## Differential hPMT Analysis in Naïve vs. Memory T Cells
+Signal intensities were extracted from GRanges objects for each hPMT (H3K27ac, H3K4me3, H3K27me3, H3K9me3) across naïve, memory, and exhausted T-cell states. Group means were calculated per genomic peak, followed by log₂ fold change (log₂FC) computation. Peaks with |log₂FC| > 0.58496 (1.5-fold change) were retained. 
+
+### Creating the datasets for comparison
 
 ```{r}
-# Naive = cols 7:10, Memory = cols 11:14, Exhausted: 15:18
+# Naïve = cols 7:10, Memory = cols 11:14, Exhausted: 15:18
 H3K27ac_signal <- cbind(
-  naive = H3K27ac_df[, 7:10],
+  naïve = H3K27ac_df[, 7:10],
   memory = H3K27ac_df[, 11:14],
   exh = H3K27ac_df[, 15:18]
 )
-H3K27me3_signal <- cbind(
-  naive = H3K27me3_df[, 7:10],
+H3K27me3_signal <- cbind( 
+  naïve = H3K27me3_df[, 7:10],
   memory = H3K27me3_df[, 11:14],
   exh = H3K27me3_df[, 15:18]
 )
 H3K4me3_signal <- cbind(
-  naive = H3K4me3_df[, 7:10],
+  naïve = H3K4me3_df[, 7:10],
   memory = H3K4me3_df[, 11:14],
   exh = H3K4me3_df[, 15:18]
 )
 
 H3K9me3_signal <- cbind(
-  naive = H3K9me3_df[, 7:10],
+  naïve = H3K9me3_df[, 7:10],
   memory = H3K9me3_df[, 11:14],
   exh = H3K9me3_df[, 15:18]
 )
-
 
 rownames(H3K27ac_signal) <- paste(H3K27ac_df$peakN)
 rownames(H3K27me3_signal) <- paste(H3K27me3_df$peakN)
@@ -237,82 +252,83 @@ rownames(H3K4me3_signal)  <- paste(H3K4me3_df$peakN)
 rownames(H3K9me3_signal)  <- paste(H3K9me3_df$peakN)
 ```
 
-## Comparing Naive and Memory Cells
+### Naïve and memory T-cells
+In order to avoid log2(0), a small pseudocount was added.
 
 ```{r}
 pseudocount <- 1e-6
 ## H3K4me3
-mean_naive_H3K4me3 <- rowMeans(H3K4me3_signal[, 1:4])   
+mean_naïve_H3K4me3 <- rowMeans(H3K4me3_signal[, 1:4])   # 40269 elements
 mean_memory_H3K4me3 <- rowMeans(H3K4me3_signal[, 5:8])  
 mean_exh_H3K4me3 <- rowMeans(H3K4me3_signal[, 9:12])
 
-log2_H3K4me3 <- log2((mean_memory_H3K4me3 + pseudocount) / (mean_naive_H3K4me3 + pseudocount))
+log2_H3K4me3 <- log2((mean_memory_H3K4me3 + pseudocount) / (mean_naïve_H3K4me3 + pseudocount))
 sig_rows_H3K4me3 <- which(abs(log2_H3K4me3) > 0.58496)
-sig_H3K4me3_signal <- H3K4me3_signal[sig_rows_H3K4me3, 1:8]
-scaled_signal_H3K4me3 <- t(scale(t(sig_H3K4me3_signal)))  
+sig_H3K4me3_signal <- H3K4me3_signal[sig_rows_H3K4me3, 1:8] #14862 elements
+scaled_signal_H3K4me3 <- t(scale(t(sig_H3K4me3_signal)))   
 
 ## H3K27ac
-mean_naive_H3K27ac <- rowMeans(H3K27ac_signal[, 1:4])  
+mean_naïve_H3K27ac <- rowMeans(H3K27ac_signal[, 1:4])  
 mean_memory_H3K27ac <- rowMeans(H3K27ac_signal[, 5:8])  
 mean_exh_H3K27ac <- rowMeans(H3K27ac_signal[, 9:12])  
 
-log2_H3K27ac <- log2((mean_memory_H3K27ac + pseudocount) / (mean_naive_H3K27ac + pseudocount))
+log2_H3K27ac <- log2((mean_memory_H3K27ac + pseudocount) / (mean_naïve_H3K27ac + pseudocount))
 sig_rows_H3K27ac <- which(abs(log2_H3K27ac) > 0.58496)
 sig_H3K27ac_signal <- H3K27ac_signal[sig_rows_H3K27ac,1:8 ]
 scaled_signal_H3K27ac <- t(scale(t(sig_H3K27ac_signal)))  
 
 ## H3K27me3
-mean_naive_H3K27me3 <- rowMeans(H3K27me3_signal[, 1:4])   
+mean_naïve_H3K27me3 <- rowMeans(H3K27me3_signal[, 1:4])   
 mean_memory_H3K27me3 <- rowMeans(H3K27me3_signal[, 5:8]) 
 mean_exh_H3K27me3 <- rowMeans(H3K27me3_signal[, 9:12])  
 
-log2_H3K27me3 <- log2((mean_memory_H3K27me3 + pseudocount) / (mean_naive_H3K27me3 + pseudocount))
+log2_H3K27me3 <- log2((mean_memory_H3K27me3 + pseudocount) / (mean_naïve_H3K27me3 + pseudocount))
 sig_rows_H3K27me3 <- which(abs(log2_H3K27me3) > 0.58496)
 sig_H3K27me3_signal <- H3K27me3_signal[sig_rows_H3K27me3, 1:8 ]
 scaled_signal_H3K27me3 <- t(scale(t(sig_H3K27me3_signal)))  
 
 
 ## H3K9me3
-mean_naive_H3K9me3 <- rowMeans(H3K9me3_signal[, 1:4])   
+mean_naïve_H3K9me3 <- rowMeans(H3K9me3_signal[, 1:4])   
 mean_memory_H3K9me3 <- rowMeans(H3K9me3_signal[, 5:8]) 
 mean_exh_H3K9me3 <- rowMeans(H3K9me3_signal[, 9:12])  
 
-log2_H3K9me3 <- log2((mean_memory_H3K9me3 + pseudocount) / (mean_naive_H3K9me3 + pseudocount))
+log2_H3K9me3 <- log2((mean_memory_H3K9me3 + pseudocount) / (mean_naïve_H3K9me3 + pseudocount))
 sig_rows_H3K9me3 <- which(abs(log2_H3K9me3) > 0.58496)
 sig_H3K9me3_signal <- H3K9me3_signal[sig_rows_H3K9me3, 1:8 ]
 scaled_signal_H3K9me3 <- t(scale(t(sig_H3K9me3_signal)))  
 ```
 
-## Comparing naive and exhausted cells:
+### Naïve and exhausted T-cells:
 ```{r}
 ## H3K4me3
-log2_H3K4me3_EXN <- log2((mean_exh_H3K4me3 + pseudocount) / (mean_naive_H3K4me3 + pseudocount))
+log2_H3K4me3_EXN <- log2((mean_exh_H3K4me3 + pseudocount) / (mean_naïve_H3K4me3 + pseudocount))
 sig_rows_H3K4me3_EXN <- which(abs(log2_H3K4me3_EXN) > 0.58496)
 sig_H3K4me3_signal_EXN <- H3K4me3_signal[sig_rows_H3K4me3_EXN,c(1:4, 9:12)]
 scaled_signal_H3K4me3_EXN <- t(scale(t(sig_H3K4me3_signal_EXN)))  
 
 
 ## H3K27ac
-log2_H3K27ac_EXN <- log2((mean_exh_H3K27ac + pseudocount) / (mean_naive_H3K27ac + pseudocount))
+log2_H3K27ac_EXN <- log2((mean_exh_H3K27ac + pseudocount) / (mean_naïve_H3K27ac + pseudocount))
 sig_rows_H3K27ac_EXN <- which(abs(log2_H3K27ac_EXN) > 0.58496)
 sig_H3K27ac_signal_EXN <- H3K27ac_signal[sig_rows_H3K27ac,c(1:4, 9:12)]
 scaled_signal_H3K27ac_EXN <- t(scale(t(sig_H3K27ac_signal_EXN)))  
 
 # H3K27me3
-log2_H3K27me3_EXN <- log2((mean_exh_H3K27me3 + pseudocount) / (mean_naive_H3K27me3 + pseudocount))
+log2_H3K27me3_EXN <- log2((mean_exh_H3K27me3 + pseudocount) / (mean_naïve_H3K27me3 + pseudocount))
 sig_rows_H3K27me3_EXN <- which(abs(log2_H3K27me3_EXN) > 0.58496)
 sig_H3K27me3_signal_EXN <- H3K27me3_signal[sig_rows_H3K27me3_EXN,c(1:4, 9:12)]
 scaled_signal_H3K27me3_EXN <- t(scale(t(sig_H3K27me3_signal_EXN)))  
 
 # H3K9me3
-log2_H3K9me3_EXN <- log2((mean_exh_H3K9me3 + pseudocount) / (mean_naive_H3K9me3 + pseudocount))
+log2_H3K9me3_EXN <- log2((mean_exh_H3K9me3 + pseudocount) / (mean_naïve_H3K9me3 + pseudocount))
 sig_rows_H3K9me3_EXN <- which(abs(log2_H3K9me3_EXN) > 0.58496)
 sig_H3K9me3_signal_EXN <- H3K9me3_signal[sig_rows_H3K9me3_EXN,c(1:4, 9:12)]
 scaled_signal_H3K9me3_EXN <- t(scale(t(sig_H3K9me3_signal_EXN)))  
 ```
 
 
-## Comparing memory and exhausted cells:
+### Memory and exhausted T-cells:
 ```{r}
 # H3K4me3
 log2_H3K4me3_EXM<- log2((mean_exh_H3K4me3 + pseudocount) / (mean_memory_H3K4me3 + pseudocount))
@@ -341,66 +357,65 @@ scaled_signal_H3K9me3_EXM<- t(scale(t(sig_H3K9me3_signal_EXM)))
 ```
 
 
-# Visualisation of heatmaps for memory vs naive
+## Visualisation of Cell Type Comparison
+
+### Naïve vs memory T-cell
+
 ```{r}
-# Suppose you have 4 naive and 4 memory samples per histone mark
 annotation_col <- data.frame(
-  CellType = rep(c("Naive T-Cell", "Memory T-Cell"), each = 4)
+  CellType = rep(c("Naïve T-Cell", "Memory T-Cell"), each = 4)
 )
 
 annotation_colors <- list(
-  CellType = c("Naive T-Cell" = "#ef77b4", "Memory T-Cell" = "#ff7f0e"))
+  CellType = c("Naïve T-Cell" = "#ef77b4", "Memory T-Cell" = "#ff7f0e"))
 
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K4me3)  
-hmap1 <- pheatmap::pheatmap(scaled_signal_H3K4me3, color = my_colors, breaks = my_breaks,  
+hmap1 <- pheatmap::pheatmap(scaled_signal_H3K4me3, breaks = my_breaks,  
                             annotation_col = annotation_col,
                             annotation_colors = annotation_colors, 
                             show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K27ac)  
-hmap2 <- pheatmap::pheatmap(scaled_signal_H3K27ac, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+hmap2 <- pheatmap::pheatmap(scaled_signal_H3K27ac, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K27me3)  
-hmap3 <- pheatmap::pheatmap(scaled_signal_H3K27me3, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE,  silent = TRUE)
+hmap3 <- pheatmap::pheatmap(scaled_signal_H3K27me3, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE,  silent = TRUE)
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K9me3)  
-hmap4 <- pheatmap::pheatmap(scaled_signal_H3K9me3, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+hmap4 <- pheatmap::pheatmap(scaled_signal_H3K9me3, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 ```
 
 
-# Visualisation of heatmaps for naive vs exhausted
+### Naïve vs exhausted T-cell
 ```{r}
-# Suppose you have 4 naive and 4 exhausted samples per histone mark
 annotation_col <- data.frame(
-  CellType = rep(c("Naive T-Cell", "Exhausted T-Cell"), each = 4)
+  CellType = rep(c("Naïve T-Cell", "Exhausted T-Cell"), each = 4)
 )
 
 annotation_colors <- list(
-  CellType = c("Naive T-Cell" = "#ef77b4", "Exhausted T-Cell" = "#4daf4a" ))
+  CellType = c("Naïve T-Cell" = "#ef77b4", "Exhausted T-Cell" = "#4daf4a" ))
 
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K4me3_EXN)  
-hmap5 <- pheatmap::pheatmap(scaled_signal_H3K4me3_EXN, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+hmap5 <- pheatmap::pheatmap(scaled_signal_H3K4me3_EXN, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K27ac_EXN)  
-hmap6 <- pheatmap::pheatmap(scaled_signal_H3K27ac_EXN, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+hmap6 <- pheatmap::pheatmap(scaled_signal_H3K27ac_EXN, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K27me3_EXN)  
-hmap7 <- pheatmap::pheatmap(scaled_signal_H3K27me3_EXN, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE,  silent = TRUE)
+hmap7 <- pheatmap::pheatmap(scaled_signal_H3K27me3_EXN, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE,  silent = TRUE)
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K9me3_EXN)  
-hmap8 <- pheatmap::pheatmap(scaled_signal_H3K9me3_EXN, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+hmap8 <- pheatmap::pheatmap(scaled_signal_H3K9me3_EXN, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 ```
 
 
-
-# Visualisation of heatmaps for memory vs exhausted
+### Memory vs exhausted T-cell
 ```{r}
-# Suppose you have 4 naive and 4 memory samples per histone mark
 annotation_col <- data.frame(
   CellType = rep(c("Memory T-Cell", "Exhausted T-Cell"), each = 4)
 )
@@ -409,23 +424,23 @@ annotation_colors <- list(
   CellType = c("Memory T-Cell" = "#ff7f0e", "Exhausted T-Cell" = "#4daf4a" ))
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K4me3_EXM)  
-hmap9 <- pheatmap::pheatmap(scaled_signal_H3K4me3_EXM, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+hmap9 <- pheatmap::pheatmap(scaled_signal_H3K4me3_EXM, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K27ac_EXM)  
-hmap10 <- pheatmap::pheatmap(scaled_signal_H3K27ac_EXM, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+hmap10 <- pheatmap::pheatmap(scaled_signal_H3K27ac_EXM, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K27me3_EXM)  
-hmap11 <- pheatmap::pheatmap(scaled_signal_H3K27me3_EXM, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE,  silent = TRUE)
+hmap11 <- pheatmap::pheatmap(scaled_signal_H3K27me3_EXM, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors,show_colnames = FALSE, show_rownames = FALSE,  silent = TRUE)
 
 rownames(annotation_col) <- colnames(scaled_signal_H3K9me3_EXM)  
-hmap12 <- pheatmap::pheatmap(scaled_signal_H3K9me3_EXM, color = my_colors, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
+hmap12 <- pheatmap::pheatmap(scaled_signal_H3K9me3_EXM, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 ```
 
+### Heatmaps of 
+```{r fig.align='center', fig.height=10, fig.width=12.5, fig.cap="Figure 4. Heatmaps of z-scored signal intensities for significantly different peaks in each hPMT. Each heatmap displays normalised (z-scored) signal intensities for genomic regions with significant differences (|log₂ fold change| > 0.58496) in histone modification between T cell states: Naïve vs Memory (left), Naïve vs Exhausted (center), and Memory vs Exhausted (right). Rows represent individual genomic peaks, and columns represent biological replicates, annotated by cell type. Separate panels are shown for H3K27ac, H3K4me3, H3K27me3, and H3K9me3 (top to bottom). Distinct clustering patterns highlight widespread and coordinated changes in chromatin accessibility and repression associated with T cell differentiation and exhaustion "}
 
-```{r fig.align='center', fig.height=10, fig.width=12.5, fig.cap="Figure 2. Heatmaps of z-scored signal intensities for significantly different peaks in each histone modification. Each heatmap displays naive, memory, and exhausted T cell samples. Color scale represents scaled signal intensity (blue: low, red: high)"}
-# Create histone mark labels as a vertical column
 label_grobs <- arrangeGrob(
   textGrob("H3K27ac", rot = 90, gp = gpar(fontsize = 12, fontface = "bold")),
   textGrob("H3K4me3", rot = 90, gp = gpar(fontsize = 12, fontface = "bold")),
@@ -435,18 +450,16 @@ label_grobs <- arrangeGrob(
   heights = unit(rep(1, 4), "null")  # match heatmap row heights
 )
 
-# Stack the heatmaps as before
 col1 <- arrangeGrob(hmap2$gtable, hmap1$gtable, hmap3$gtable, hmap4$gtable, ncol = 1)
 col2 <- arrangeGrob(hmap6$gtable, hmap5$gtable, hmap7$gtable, hmap8$gtable, ncol = 1)
 col3 <- arrangeGrob(hmap10$gtable, hmap9$gtable, hmap11$gtable, hmap12$gtable, ncol = 1)
 
-# Add titles to each column
-col1_with_title <- arrangeGrob(textGrob("Naive vs Memory", gp = gpar(fontsize = 12, fontface = "bold")),
+col1_with_title <- arrangeGrob(textGrob("Naïve vs Memory", gp = gpar(fontsize = 12, fontface = "bold")),
                                col1,
                                ncol = 1,
                                heights = unit.c(unit(1, "lines"), unit(1, "null")))
 
-col2_with_title <- arrangeGrob(textGrob("Naive vs Exhausted", gp = gpar(fontsize = 12, fontface = "bold")),
+col2_with_title <- arrangeGrob(textGrob("Naïve vs Exhausted", gp = gpar(fontsize = 12, fontface = "bold")),
                                col2,
                                ncol = 1,
                                heights = unit.c(unit(1, "lines"), unit(1, "null")))
@@ -460,28 +473,23 @@ col3_with_title <- arrangeGrob(textGrob("Memory vs Exhausted", gp = gpar(fontsiz
 grid.arrange(label_grobs, col1_with_title, col2_with_title, col3_with_title,
              ncol = 4,
              widths = unit.c(unit(1.5, "cm"), unit(1, "null"), unit(1, "null"), unit(1, "null")),
-             top = "Histone Modification Profiles Across T Cell States")
+             top = "hPMT Profiles Across T Cell States")
 
 ```
+The heatmaps reveal that each histone modification exhibits substantial and coordinated changes in signal intensity between T cell states. Activating marks (H3K27ac, H3K4me3) generally show increased signal in memory T cells compared to naïve, while repressive marks (H3K27me3, H3K9me3) are more prominent in exhausted T cells. Hierarchical clustering demonstrates clear separation between cell types for all histone modifications, underscoring robust and reproducible epigenetic reprogramming during T cell differentiation and exhaustion. These patterns suggest that both activation and repression of chromatin regions are key features distinguishing naïve, memory, and exhausted T cell states.
 
-```{r, eval = T, include = F}
-#rm(mean_memory_H3K27ac, mean_naive_H3K27ac, mean_memory_H3K27me3, mean_memory_H3K4me3, mean_memory_H3K9me3, mean_naive_H3K27me3, mean_naive_H3K4me3, mean_naive_H3K9me3, sig_rows_H3K27ac, sig_rows_H3K27me3, sig_rows_H3K4me3, sig_rows_H3K9me3, sig_H3K27ac_signal, sig_H3K27me3_signal,sig_H3K4me3_signal, sig_H3K9me3_signal, log2_H3K27ac, log2_H3K27me3, log2_H3K4me3, log2_H3K9me3, sig_H3K9me3_signal_EXM, sig_rows_H3K9me3_EXM, sig_H3K27me3_signal_EXM, sig_rows_H3K27me3_EXM, sig_H3K27ac_signal_EXM, sig_rows_H3K27ac_EXM, sig_H3K4me3_signal_EXM, sig_rows_H3K4me3_EXM, sig_H3K9me3_signal, sig_rows_H3K9me3, sig_H3K27me3_signal, sig_rows_H3K27me3, sig_H3K27ac_signal, sig_rows_H3K27ac, sig_rows_H3K4me3, sig_H3K4me3_signal)
-```
 
 # Comparing all significant hPMTs of different cell type comparisons
 
-# Memory vs Naive
+To get an overview of how the different cell types differ in terms of hPMTs, all hPMT per cell type comparison were added to a new matrix. If a peak present in one hPMT was missing in another, values were set to zero for visualisatio and later removal.
+
+## Memory vs Naïve
 
 ```{r}
-# List of all scaled matrices
 scaled_list <- list(scaled_signal_H3K4me3, scaled_signal_H3K27ac, scaled_signal_H3K27me3, scaled_signal_H3K9me3)
 
-#rm(scaled_signal_H3K4me3, scaled_signal_H3K27ac, scaled_signal_H3K27me3, scaled_signal_H3K9me3)
-
-# Get union of all rownames (regions)
 all_regions <- Reduce(union, lapply(scaled_list, rownames))
 
-# Function to add missing rows with zeros and reorder rows by all_regions
 fill_missing_rows <- function(mat, all_rows) {
   missing <- setdiff(all_rows, rownames(mat))
   if(length(missing) > 0) {
@@ -494,18 +502,14 @@ fill_missing_rows <- function(mat, all_rows) {
   # Reorder rows
   mat[all_rows, , drop = FALSE]
 }
-
-# Apply function to each scaled matrix
 scaled_filled <- lapply(scaled_list, fill_missing_rows, all_rows = all_regions)
 
-# Combine all columns together (all samples from all histone mods)
 combined_scaled <- do.call(cbind, scaled_filled)
 
 #rm(scaled_list)
 ```
 
 ```{r}
-# Get colnames for each scaled matrix (samples)
 samples_H3K4me3  <- colnames(scaled_filled[[1]])
 samples_H3K27ac  <- colnames(scaled_filled[[2]])
 samples_H3K27me3 <- colnames(scaled_filled[[3]])
@@ -514,14 +518,13 @@ samples_H3K9me3  <- colnames(scaled_filled[[4]])
 all_samples <- c(samples_H3K27ac, samples_H3K4me3, samples_H3K27me3, samples_H3K9me3)
 
 
-# Assuming 4 naive + 4 memory per histone modification, adjust if different
 annotation_col <- data.frame(
-  CellType = rep(c("Naive T-Cell", "Memory T-Cell"), times = c(4,4)),
+  CellType = rep(c("Naïve T-Cell", "Memory T-Cell"), times = c(4,4)),
   HistoneMark = rep(c( "H3K27ac", "H3K4me3", "H3K27me3", "H3K9me3"), each = 8)
 )
 
 annotation_colors <- list(
-  CellType = c("Naive T-Cell" = "#ef77b4", "Memory T-Cell" = "#ff7f0e"),
+  CellType = c("Naïve T-Cell" = "#ef77b4", "Memory T-Cell" = "#ff7f0e"),
   HistoneMark = c(
   "H3K4me3"   = "#ffd92f",  
   "H3K27ac"   = "#D73027",  
@@ -537,33 +540,28 @@ top_rows <- head(order(apply(combined_scaled, 1, var), decreasing = TRUE), 5000)
 
 
 ```{r}
-all_hmap1 <- pheatmap::pheatmap(combined_scaled[top_rows, ],
-         color = my_colors, breaks = my_breaks, 
+all_hmap1 <- pheatmap::pheatmap(combined_scaled[top_rows, ], breaks = my_breaks, 
          annotation_col = annotation_col,
          annotation_colors = annotation_colors,
          show_colnames = FALSE,
          show_rownames = FALSE,
-         main = "Naive vs. Memory T Cell",
+         main = "A) Naïve vs. Memory T Cell",
          cluster_rows = TRUE,
          cluster_cols = F,
-         silent = TRUE)
+         silent = TRUE,
+         cellheight = 0.0275)
 
-#rm(top_rows, scaled_filled)
 ```
 
 
-# Exhausted vs Naive 
+## Exhausted vs Naïve 
 
 ```{r}
 # List of all scaled matrices
 scaled_list_EXN <- list(scaled_signal_H3K4me3_EXN, scaled_signal_H3K27ac_EXN, scaled_signal_H3K27me3_EXN, scaled_signal_H3K9me3_EXN)
 
-#rm(scaled_signal_H3K4me3_EXN, scaled_signal_H3K27ac_EXN, scaled_signal_H3K27me3_EXN, scaled_signal_H3K9me3_EXN)
-
-# Get union of all rownames (regions)
 all_regions_EXN <- Reduce(union, lapply(scaled_list_EXN, rownames))
 
-# Function to add missing rows with zeros and reorder rows by all_regions
 fill_missing_rows <- function(mat, all_rows) {
   missing <- setdiff(all_rows, rownames(mat))
   if(length(missing) > 0) {
@@ -577,10 +575,7 @@ fill_missing_rows <- function(mat, all_rows) {
   mat[all_rows, , drop = FALSE]
 }
 
-# Apply function to each scaled matrix
 scaled_filled_EXN <- lapply(scaled_list_EXN, fill_missing_rows, all_rows = all_regions_EXN)
-
-# Combine all columns together (all samples from all histone mods)
 combined_scaled_EXN <- do.call(cbind, scaled_filled_EXN)
 
 ```
@@ -594,56 +589,45 @@ samples_H3K9me3  <- colnames(scaled_filled_EXN[[4]])
 
 all_samples_EXN <- c(samples_H3K27ac, samples_H3K4me3, samples_H3K27me3, samples_H3K9me3)
 
-
-# Assuming 4 naive + 4 memory per histone modification, adjust if different
 annotation_col_2 <- data.frame(
-  CellType = rep(c("Naive T-Cell", "Exhausted T-Cell"), times = c(4,4)),
+  CellType = rep(c("Naïve T-Cell", "Exhausted T-Cell"), times = c(4,4)),
   HistoneMark = rep(c( "H3K27ac", "H3K4me3", "H3K27me3", "H3K9me3"), each = 8)
 )
 
 annotation_colors_2 <- list(
-  CellType = c("Naive T-Cell" = "#ef77b4", "Exhausted T-Cell" = "#4daf4a"),
+  CellType = c("Naïve T-Cell" = "#ef77b4", "Exhausted T-Cell" = "#4daf4a"),
   HistoneMark = c(
   "H3K4me3"   = "#ffd92f",  
   "H3K27ac"   = "#D73027",  
   "H3K27me3"  = "#a6cee3",  
   "H3K9me3"   = "#6A5ACD"   
-)
-)
-# 
-# rownames(annotation_col_2) <- c("H3K4me3 Naive T-Cell 1 " ,  " H3K4me3 Naive T-Cell 2"  , " H3K4me3 Naive T-Cell 3","H3K4me3 Naive T-Cell 4" ,  " H3K4me3 Exhausted T-Cell 1" , "H3K4me3 Exhausted T-Cell 2","H3K4me3 Exhausted T-Cell 3 ","H3K4me3 Exhausted T-Cell 4","H3K27ac Naive T-Cell 1","H3K27ac Naive T-Cell 2","H3K27ac Naive T-Cell 3","H3K27ac Naive T-Cell 4","H3K27ac Exhausted T-Cell 1","H3K27ac Exhausted T-Cell 2","H3K27ac Exhausted T-Cell 3 ","H3K27ac Exhausted T-Cell 4","H3K27me3 Naive T-Cell 1","H3K27me3 Naive T-Cell 2","H3K27me3 Naive T-Cell 3","H3K27me3 Naive T-Cell 4","H3K27me3 Exhausted T-Cell 1","H3K27me3 Exhausted T-Cell 2","H3K27me3 Exhausted T-Cell 3 ","H3K27me3 Exhausted T-Cell 4","H3K9me3 Naive T-Cell 1","H3K9me3 Naive T-Cell 2","H3K9me3 Naive T-Cell 3","H3K9me3 Naive T-Cell 4","H3K9me3 Exhausted T-Cell 1","H3K9me3 Exhausted T-Cell 2","H3K9me3 Exhausted T-Cell 3 ","H3K9me3 Exhausted T-Cell 4")
-
-
+))
 rownames(annotation_col_2) <- colnames(combined_scaled_EXN)
 
 
 top_rows_EXN <- head(order(apply(combined_scaled_EXN, 1, var), decreasing = TRUE), 5000)
 
-all_hmap2 <- pheatmap::pheatmap(combined_scaled_EXN[top_rows_EXN, ],
-         color = my_colors, breaks = my_breaks, 
+all_hmap2 <- pheatmap::pheatmap(combined_scaled_EXN[top_rows_EXN, ], breaks = my_breaks, 
          annotation_col = annotation_col_2,
          annotation_colors = annotation_colors_2,
          show_colnames = FALSE,
          show_rownames = FALSE,
-         main = "Exhausted vs. Naive T-Cell",
+         main = "B) Exhausted vs. Naïve T-Cell",
          cluster_rows = TRUE,
          cluster_cols = F,
-         silent = TRUE)
+         silent = TRUE,
+         cellheight = 0.0275)
 
 #rm(top_rows, scaled_filled_EXN)
 ```
 
+## Memory vs Exhausted
 
 ```{r}
-# List of all scaled matrices
 scaled_list_EXM <- list(scaled_signal_H3K4me3_EXM, scaled_signal_H3K27ac_EXM, scaled_signal_H3K27me3_EXM, scaled_signal_H3K9me3_EXM)
 
-#rm(scaled_signal_H3K4me3_EXM, scaled_signal_H3K27ac_EXM, scaled_signal_H3K27me3_EXM, scaled_signal_H3K9me3_EXM)
-
-# Get union of all rownames (regions)
 all_regions_EXM <- Reduce(union, lapply(scaled_list_EXM, rownames))
 
-# Function to add missing rows with zeros and reorder rows by all_regions
 fill_missing_rows <- function(mat, all_rows) {
   missing <- setdiff(all_rows, rownames(mat))
   if(length(missing) > 0) {
@@ -657,16 +641,12 @@ fill_missing_rows <- function(mat, all_rows) {
   mat[all_rows, , drop = FALSE]
 }
 
-# Apply function to each scaled matrix
 scaled_filled_EXM <- lapply(scaled_list_EXM, fill_missing_rows, all_rows = all_regions_EXM)
-
-# Combine all columns together (all samples from all histone mods)
 combined_scaled_EXM <- do.call(cbind, scaled_filled_EXM)
 ```
 
 
 ```{r}
-# Get colnames for each scaled matrix (samples)
 samples_H3K4me3  <- colnames(scaled_filled_EXM[[1]])
 samples_H3K27ac  <- colnames(scaled_filled_EXM[[2]])
 samples_H3K27me3 <- colnames(scaled_filled_EXM[[3]])
@@ -675,7 +655,7 @@ samples_H3K9me3  <- colnames(scaled_filled_EXM[[4]])
 all_samples_EXM <- c(samples_H3K27ac, samples_H3K4me3, samples_H3K27me3, samples_H3K9me3)
 
 
-# Assuming 4 naive + 4 memory per histone modification, adjust if different
+
 annotation_col_3 <- data.frame(
   CellType = rep(c("Memory T-Cell", "Exhausted T-Cell"), times = c(4,4)),
   HistoneMark = rep(c( "H3K27ac", "H3K4me3", "H3K27me3", "H3K9me3"), each = 8))
@@ -690,14 +670,89 @@ annotation_colors_3 <- list(
 )
 )
 
-
 rownames(annotation_col_3) <- colnames(combined_scaled_EXM)
 
 top_rows_EXM <- head(order(apply(combined_scaled_EXM, 1, var), decreasing = TRUE), 5000)
 
+all_hmap3 <- pheatmap::pheatmap(combined_scaled_EXM[top_rows_EXM, ], breaks = my_breaks, 
+         annotation_col = annotation_col_3,
+         annotation_colors = annotation_colors_3,
+         show_colnames = FALSE,
+         show_rownames = FALSE,
+         main = "C) Memory vs. Exhausted T-Cell",
+         cluster_rows = TRUE,
+         cluster_cols = F,
+         silent = TRUE,
+         cellheight = 0.0275)
 
-all_hmap3 <- pheatmap::pheatmap(combined_scaled_EXM[top_rows_EXM, ],
-         color = my_colors, breaks = my_breaks, 
+#rm(top_rows, scaled_filled_EXM)
+```
+
+
+```{r, fig.width=8, fig.height=9, fig.cap="Figure 5. Heatmaps of scaled signal intensities for differentially modified peaks across T-cell state transitions. Z-scored signal intensities are displayed for genomic regions with significant differences (|log₂ fold change| > 0.58496) between A) naïve vs. memory T cells, B) exhausted vs. naïve T cells, and C) memory vs. exhausted T cells. Each panel shows signals across four histone modifications: H3K4me3, H3K27ac, H3K27me3, and H3K9me3. Rows represent individual genomic peaks, columns represent biological replicates. Color annotations indicate histone mark (top bar) and cell type (bottom bar). Hierarchical clustering reveals distinct chromatin modification patterns associated with T cell differentiation and exhaustion states. "}
+grid.arrange(
+  all_hmap1$gtable, 
+  all_hmap2$gtable, 
+  all_hmap3$gtable, 
+  ncol = 1,
+  top = "Comparative Analysis of Histone Modification Landscapes Across T Cell Differentiation States"
+)
+```
+
+This comparison illustrates a progressive epigenetic landscape transformation form naïve to memory and then exhausted T-cell states. Each transition shows distinct clustering patterns, which become clear when clustered according to the H3K27ac. 
+
+#### Naïve vs. Memory
+Enhanced activating marks (H3K4me3, H3K27ac) in memory cells support their "poised" chromatin state for rapid reactivation.
+#### Naïve vs. Exhausted
+Exhausted cells show increased repressive marks (H3K27me3, H3K9me3), consistent with their functionally suppressed phenotype
+#### Memory vs. Exhausted
+The most dramatic differences occur between these functionally opposite states, with memory cells maintaining active chromatin while exhausted cells accumulate repressive modifications
+
+
+These results suggest that T cell exhaustion represents an active epigenetic silencing process rather than simply a loss of memory cell characteristics. The distinct chromatin landscapes likely contribute to the functional differences between these T cell states and may represent therapeutic targets for reversing T cell exhaustion.
+# Annotation 
+ready for Valerie <3 
+
+
+For annotating genes we chose to exlude all rows that contain a 0 to hopefully have heatmaps that are a bit more easy to read.
+```{r}
+anno_MN <-combined_scaled[top_rows, ]
+anno_EXN <-combined_scaled_EXN[top_rows_EXN, ]
+anno_EXM <-combined_scaled_EXM[top_rows_EXM, ]
+
+anno_MN_filtered  <- anno_MN[apply(anno_MN != 0, 1, all), , drop = FALSE]
+dim(anno_MN_filtered)
+anno_EXN_filtered <- anno_EXN[apply(anno_EXN != 0, 1, all), , drop = FALSE]
+dim(anno_EXN_filtered)
+anno_EXM_filtered <- anno_EXM[apply(anno_EXM != 0, 1, all), , drop = FALSE]
+dim(anno_EXM_filtered)
+```
+The first three matrices all contain 5000 peaks, sicne we previously filtered for the top 5000 peaks in every hPMT. Post filtering out any rows that contained a zero, i.e. not significant across all hPMTs, the datasets were substantially smaller.
+
+```{r}
+annot_hmap1 <- pheatmap::pheatmap(anno_MN_filtered, breaks = my_breaks, 
+         annotation_col = annotation_col,
+         annotation_colors = annotation_colors,
+         show_colnames = FALSE,
+         show_rownames = FALSE,
+         main = "Memory vs. Exhausted T-Cell",
+         cluster_rows = TRUE,
+         cluster_cols = F,
+         silent = TRUE,
+         cellheight = 0.2)
+
+annot_hmap2 <- pheatmap::pheatmap(anno_EXN_filtered, breaks = my_breaks, 
+         annotation_col = annotation_col_2,
+         annotation_colors = annotation_colors_2,
+         show_colnames = FALSE,
+         show_rownames = FALSE,
+         main = "Memory vs. Exhausted T-Cell",
+         cluster_rows = TRUE,
+         cluster_cols = F,
+         silent = TRUE,
+         cellheight = 0.1)
+
+annot_hmap3 <- pheatmap::pheatmap(anno_EXM_filtered, breaks = my_breaks, 
          annotation_col = annotation_col_3,
          annotation_colors = annotation_colors_3,
          show_colnames = FALSE,
@@ -705,26 +760,32 @@ all_hmap3 <- pheatmap::pheatmap(combined_scaled_EXM[top_rows_EXM, ],
          main = "Memory vs. Exhausted T-Cell",
          cluster_rows = TRUE,
          cluster_cols = F,
-         silent = TRUE)
+         silent = TRUE,
+         cellheight = 1)
 
-#rm(top_rows, scaled_filled_EXM)
 ```
 
 
-```{r, fig.width=10, fig.height=20}
+```{r, fig.width=8, fig.height=9, fig.cap = "Figure 6. Heatmaps of Differential Histone Modification Signals with Zero-Value Peaks Removed. Each heatmap displays z-scored signal intensities for regions with significant differences (|log₂ fold change| > 0.58496) across four histone modifications (H3K4me3, H3K27ac, H3K27me3, H3K9me3) in pairwise comparisons: naïve vs. memory, naïve vs. exhausted, and memory vs. exhausted T cells. Only peaks with non-zero signal across all samples in each comparison are included. Rows represent genomic peaks; columns represent biological replicates, annotated by histone mark and cell type. "}
 grid.arrange(
-  all_hmap1$gtable, 
-  all_hmap2$gtable, 
-  all_hmap3$gtable, 
+  annot_hmap1$gtable, 
+  annot_hmap2$gtable, 
+  annot_hmap3$gtable, 
   ncol = 1,
-  top = "Scaled Signal Intensity Across hPMTs"
+  top = "Heatmaps of Differential Histone Modification Signals with Zero-Value Peaks Removed"
 )
 ```
 
 
-# Filtering and Exporting Regions of Interest for potential later use 
+## Applying the annotations
 
-### Naive and Memory 
+
+
+
+## Numerical evaluation of activating, repressing and bivalent regions across cell type comparisons
+Next to the visual evaluation done using the heatmaps above, we were also interested in quantifying the high signal activating, repressing, and bivalent hPMT's across our cell type comparisons.
+
+### Naïve and Memory 
 
 ```{r}
 
@@ -739,12 +800,11 @@ open_high_H3K27ac_MN  <- apply(H3K27ac_MN, 1, function(x) all(x >= 0))
 
 select_rows_MN <- which(open_high_H3K4me3_MN & open_high_H3K27ac_MN)
 
-memory_activating_MN <- combined_scaled[select_rows_MN, c(5:8, 13:16, 21:24, 29:32)]
+activating_MN <- combined_scaled[select_rows_MN, c(5:8, 13:16, 21:24, 29:32)]
+activating_MN <- activating_MN[!apply(activating_MN == 0, 1, any), ]
 
-memory_activating_MN <- memory_activating_MN[!apply(memory_activating_MN == 0, 1, any), ]
-dim(memory_activating_MN)
 
-write.csv(memory_activating_MN, file = "files/memory_open_peaks_signal.csv", row.names = T)
+write.csv(activating_MN, file = "files/open_peaks_signal.csv", row.names = T)
 ```
 
 ```{r}
@@ -754,12 +814,11 @@ closed_high_H3K9me3_MN  <- apply(H3K9me3_MN, 1, function(x) all(x >= 0))
 
 select_rows_rep_MN <- which(closed_high_H3K27me3_MN & closed_high_H3K9me3_MN)
 
-memory_repressing_MN <- combined_scaled[select_rows_rep_MN, c(5:8, 13:16, 21:24, 29:32)]
-memory_repressing_MN <- memory_repressing_MN[!apply(memory_repressing_MN == 0, 1, any), ]
+repressing_MN <- combined_scaled[select_rows_rep_MN, c(5:8, 13:16, 21:24, 29:32)]
+repressing_MN <- repressing_MN[!apply(repressing_MN == 0, 1, any), ]
 
-dim(memory_repressing_MN)
 
-write.csv(memory_repressing_MN, file= "files/memory_closed_peaks_signal.csv", row.names = T)
+write.csv(repressing_MN, file= "files/closed_peaks_signal.csv", row.names = T)
 ```
 
 ```{r}
@@ -767,16 +826,15 @@ write.csv(memory_repressing_MN, file= "files/memory_closed_peaks_signal.csv", ro
 
 select_rows_b_MN <- which(open_high_H3K4me3_MN & closed_high_H3K27me3_MN)
 
-memory_bivalent_MN <- combined_scaled[select_rows_b_MN, c(5:8, 13:16, 21:24, 29:32)]
-memory_bivalent_MN <- memory_bivalent_MN[!apply(memory_bivalent_MN == 0, 1, any), ]
+bivalent_MN <- combined_scaled[select_rows_b_MN, c(5:8, 13:16, 21:24, 29:32)]
+bivalent_MN <- bivalent_MN[!apply(bivalent_MN == 0, 1, any), ]
 
-dim(memory_bivalent_MN)
 
-write.csv(memory_bivalent_MN, file = "files/memory_bivalent.csv", row.names = T)
+write.csv(bivalent_MN, file = "files/bivalent.csv", row.names = T)
 ```
-Using this approach we decrease the size of the dataset for comparing naive and memory T cells to 308 peaks, which is substantially less than the initial 45174 peaks we looked at.
+Using this approach we decrease the size of the dataset for comparing naïve and memory T cells to 308 peaks, which is substantially less than the initial 45174 peaks we looked at.
 
-### Naive and Exhausted
+### Naïve and Exhausted
 ```{r}
 # Activating High
 H3K4me3_EXN  <- combined_scaled_EXN[, 5:8]
@@ -791,7 +849,6 @@ select_rows_EXN <- which(open_high_H3K4me3_EXN & open_high_H3K27ac_EXN)
 activating_EXN <- combined_scaled_EXN[select_rows_EXN, c(5:8, 13:16, 21:24, 29:32)]
 activating_EXN <- activating_EXN[!apply(activating_EXN == 0, 1, any), ]
 
-dim(activating_EXN)
 
 write.csv(activating_EXN, file = "files/open_peaks_signal_EXN.csv", row.names = T)
 ```
@@ -807,7 +864,6 @@ select_rows_rep_EXN <- which(closed_high_H3K27me3_EXN & closed_high_H3K9me3_EXN)
 repressing_EXN <- combined_scaled_EXN[select_rows_rep_EXN, c(5:8, 13:16, 21:24, 29:32)]
 repressing_EXN <- repressing_EXN[!apply(repressing_EXN == 0, 1, any), ]
 
-dim(repressing_EXN)
 
 write.csv(repressing_EXN, file= "files/closed_peaks_signal_EXN.csv", row.names = T)
 ```
@@ -819,7 +875,7 @@ select_rows_b_EXN <- which(open_high_H3K4me3_EXN & closed_high_H3K27me3_EXN)
 bivalent_EXN <- combined_scaled_EXN[select_rows_b_EXN, c(5:8, 13:16, 21:24, 29:32)]
 bivalent_EXN <- bivalent_EXN[!apply(bivalent_EXN == 0, 1, any), ]
 
-dim(bivalent_EXN)
+
 
 write.csv(bivalent_EXN, file = "files/bivalent_EXN.csv", row.names = T)
 ```
@@ -841,7 +897,6 @@ select_rows_EXM <- which(open_high_H3K4me3_EXM & open_high_H3K27ac_EXM)
 activating_EXM <- combined_scaled_EXM[select_rows_EXM, c(5:8, 13:16, 21:24, 29:32)]
 activating_EXM <- activating_EXM[!apply(activating_EXM == 0, 1, any), ]
 
-dim(activating_EXM)
 
 write.csv(activating_EXM, file = "files/open_peaks_signal_EXM.csv", row.names = T)
 ```
@@ -855,10 +910,8 @@ closed_high_H3K9me3_EXM  <- apply(H3K9me3_EXM, 1, function(x) all(x >= 0))
 select_rows_rep_EXM <- which(closed_high_H3K27me3_EXM & closed_high_H3K9me3_EXM) 
 
 repressing_EXM <- combined_scaled[select_rows_rep_EXM, c(5:8, 13:16, 21:24, 29:32)]
-
 repressing_EXM <- repressing_EXM[!apply(repressing_EXM == 0, 1, any), ]
 
-dim(repressing_EXM)
 write.csv(repressing_EXM, file= "files/closed_peaks_signal_EXM.csv", row.names = T)
 ```
 
@@ -869,10 +922,34 @@ select_rows_b_EXM <- which(open_high_H3K4me3_EXM & closed_high_H3K27me3_EXM)
 bivalent_EXM <- combined_scaled[select_rows_b_EXM, c(5:8, 13:16, 21:24, 29:32)]
 bivalent_EXM <- bivalent_EXM[!apply(bivalent_EXM == 0, 1, any), ]
 
-dim(bivalent_EXM)
-
 write.csv(bivalent_EXM, file = "files/bivalent_EXM.csv", row.names = T)
 ```
+
+
+```{r}
+comparison <- matrix(nrow = 3, ncol = 3)
+colnames(comparison) <- c("Naïve vs. Memory", "Naïve vs. Exhausted",  "Memory vs. Exhausted" )
+rownames(comparison) <- c("activating", "repressing", "bivalent")
+
+comparison[1,1] <- nrow(activating_MN)
+comparison[2,1] <-nrow(repressing_MN)
+comparison[3,1] <-nrow(bivalent_MN)
+
+comparison[1,2] <-nrow(activating_EXN)
+comparison[2,2] <-nrow(repressing_EXN)
+comparison[3,2] <-nrow(bivalent_EXN)
+
+
+comparison[1,3] <-nrow(activating_EXM)
+comparison[2,3] <-nrow(repressing_EXM)
+comparison[3,3] <-nrow(bivalent_EXM)
+```
+
+
+```{r, tab.cap="Table 2. Comparing the counts of significant activating, repressing, and bivalent peaks across cell type comparisons"}
+comparison
+```
+Table 2 summarises the counts of significant activating, repressing, and bivalent chromatin peaks identified in each pairwise comparison of T cell states. In the transition from naïve to memory T cells, 131 activating, 141 repressing, and 148 bivalent peaks were detected. The comparison between naïve and exhausted T cells revealed higher numbers of significant peaks, with 179 activating, 237 repressing, and 196 bivalent regions. Notably, the memory versus exhausted comparison showed a marked increase in repressing peaks (560), while the number of activating (3) and bivalent (105) peaks was substantially lower. These results indicate that chromatin repression is most pronounced during the transition from memory to exhausted T cells, whereas both activation and bivalency are more prominent in earlier stages of T cell differentiation.
 
 
 ```{r, warning=T, include = F, eval=F}
