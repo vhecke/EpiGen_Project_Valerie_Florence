@@ -33,21 +33,23 @@ suppressPackageStartupMessages({
 })
 ```
 
-
+# 6.)  Data Processing
 ```{r, include = T}
 # Setting my heatmap colour right in the beginning
 my_breaks <- seq(-2, 2, length.out = 101)
 ```
 
-## Importing the downloaded data
+## 6.1) Importing the downloaded data
 
 ```{r, tab.cap="Table 1. Overview of contents of txt files available for download."}
 head(read.table("peaks/H3K27ac.txt", header = TRUE))
 ```
 In our txt files we find the information about the peak number, the chromosome where the peak is located, the start and end base, as well as the length.The file includes the normalised counts for all four replicates of our four (Naïve D30, Naïve D32, Memory, Exhausted) T-cell types. 
 
+### 6.1.1) Conversion of .txt files to .bed files
+
 ```{r}
-# CTCF is 
+
 #CTCF_df <- read.table("peaks/CTCF.txt", header = TRUE)
 H3K27ac_df <- read.table("peaks/H3K27ac.txt", header = TRUE)
 H3K27me3_df <- read.table("peaks/H3K27me3.txt", header = TRUE)
@@ -94,12 +96,12 @@ regionUpset(peaks)
 The UpSet plot reveals substantial overlap as well as unique sets of genomic regions marked by each histone modification. The largest intersection (13,671 regions) corresponds to peaks uniquely associated with H3K27ac, highlighting its broad distribution. Notably, thousands of regions are marked exclusively by individual modifications (e.g., 7,224 for H3K9me3 and 7,138 for H3K27me3), while smaller subsets of peaks are co-occupied by multiple marks, reflecting combinatorial chromatin states. These patterns underscore both the specificity and redundancy of histone modification landscapes in T cells, with distinct and overlapping regulatory regions contributing to the epigenetic diversity observed across naïve, memory, and exhausted states.
 
 
-## Quality Control
+## 6.2) Quality Control
 
-### PCA
+### 6.2.1) PCA
 A principal component analysis (PCA) was performed to see how the different cell types within the hPMT would cluster to visualise first differences between the samples and hPMTs. 
 
-#### Clustering by Cell Type
+#### 6.2.1.1) Clustering by Cell Type
 
 ```{r}
 H3K27ac_PCA <- H3K27ac_df[,7:18]
@@ -159,7 +161,7 @@ grid.arrange(
 
 The PCA plots in Figure 2 show clear segregation of naïve, memory, and exhausted T-cell samples based on their hPMT.  For each histone mark — H3K27ac, H3K4me3, H3K27me3, and H3K9me3 — samples cluster according to cell type. This consistent separation across all four hPMTs indicates that each T-cell state is characterised by a unique chromatin landscape. The tight clustering of replicates within each cell type further demonstrates the reproducibility of the data and the robust epigenetic differences that accompany T-cell differentiation and exhaustion.
 
-#### Clustering by hPMT
+#### 6.2.1.2) Clustering by hPMT
 
 ```{r}
 H3K27ac_PCA <- H3K27ac_PCA %>% tibble::rownames_to_column("peakID")
@@ -217,10 +219,10 @@ ggplot(pca_df, aes(PC1, PC2, color = CellType, shape = HistoneMark)) +
 
 This PCA demonstrates that the global patterns of hPMTs distinctly separate both by mark and by T cell state. Samples cluster tightly by hPMT (shape), and within each mark, further group by cell type (color), indicating that both the choice of histone mark and the differentiation state of the T cell are major drivers of epigenetic variation. The absence of overlap between hPMT driven clusters suggests robust and reproducible differences in chromatin state among naïve, memory, and exhausted T cells. 
 
-## Differential hPMT Analysis in Naïve vs. Memory T Cells
+## 6.3) Differential hPMT Analysis in Naïve vs. Memory T Cells
 Signal intensities were extracted from GRanges objects for each hPMT (H3K27ac, H3K4me3, H3K27me3, H3K9me3) across naïve, memory, and exhausted T-cell states. Group means were calculated per genomic peak, followed by log₂ fold change (log₂FC) computation. Peaks with |log₂FC| > 0.58496 (1.5-fold change) were retained. 
 
-### Creating the datasets for comparison
+### 6.3.1) Creating the datasets for comparison
 
 ```{r}
 # Naïve = cols 7:10, Memory = cols 11:14, Exhausted: 15:18
@@ -252,7 +254,7 @@ rownames(H3K4me3_signal)  <- paste(H3K4me3_df$peakN)
 rownames(H3K9me3_signal)  <- paste(H3K9me3_df$peakN)
 ```
 
-### Naïve and memory T-cells
+### 6.3.2) Naïve and memory T-cells
 In order to avoid log2(0), a small pseudocount was added.
 
 ```{r}
@@ -299,7 +301,7 @@ sig_H3K9me3_signal <- H3K9me3_signal[sig_rows_H3K9me3, 1:8 ]
 scaled_signal_H3K9me3 <- t(scale(t(sig_H3K9me3_signal)))  
 ```
 
-### Naïve and exhausted T-cells:
+### 6.3.3) Naïve and exhausted T-cells:
 ```{r}
 ## H3K4me3
 log2_H3K4me3_EXN <- log2((mean_exh_H3K4me3 + pseudocount) / (mean_naïve_H3K4me3 + pseudocount))
@@ -328,7 +330,7 @@ scaled_signal_H3K9me3_EXN <- t(scale(t(sig_H3K9me3_signal_EXN)))
 ```
 
 
-### Memory and exhausted T-cells:
+### 6.3.4)  Memory and exhausted T-cells:
 ```{r}
 # H3K4me3
 log2_H3K4me3_EXM<- log2((mean_exh_H3K4me3 + pseudocount) / (mean_memory_H3K4me3 + pseudocount))
@@ -357,9 +359,9 @@ scaled_signal_H3K9me3_EXM<- t(scale(t(sig_H3K9me3_signal_EXM)))
 ```
 
 
-## Visualisation of Cell Type Comparison
+## 6.4)  Visualisation of Cell Type Comparison
 
-### Naïve vs memory T-cell
+### 6.4.1) Naïve vs memory T-cell
 
 ```{r}
 annotation_col <- data.frame(
@@ -388,7 +390,7 @@ hmap4 <- pheatmap::pheatmap(scaled_signal_H3K9me3, breaks = my_breaks,  annotati
 ```
 
 
-### Naïve vs exhausted T-cell
+### 6.4.2) Naïve vs exhausted T-cell
 ```{r}
 annotation_col <- data.frame(
   CellType = rep(c("Naïve T-Cell", "Exhausted T-Cell"), each = 4)
@@ -414,7 +416,7 @@ hmap8 <- pheatmap::pheatmap(scaled_signal_H3K9me3_EXN, breaks = my_breaks,  anno
 ```
 
 
-### Memory vs exhausted T-cell
+### 6.4.3) Memory vs exhausted T-cell
 ```{r}
 annotation_col <- data.frame(
   CellType = rep(c("Memory T-Cell", "Exhausted T-Cell"), each = 4)
@@ -438,7 +440,7 @@ rownames(annotation_col) <- colnames(scaled_signal_H3K9me3_EXM)
 hmap12 <- pheatmap::pheatmap(scaled_signal_H3K9me3_EXM, breaks = my_breaks,  annotation_col = annotation_col,annotation_colors = annotation_colors, show_colnames = FALSE, show_rownames = FALSE, silent = TRUE)
 ```
 
-### Heatmaps of 
+### 6.4.4) Heatmaps of z-scored signal intensities for significantly different peaks in each hPMT
 ```{r fig.align='center', fig.height=10, fig.width=12.5, fig.cap="Figure 4. Heatmaps of z-scored signal intensities for significantly different peaks in each hPMT. Each heatmap displays normalised (z-scored) signal intensities for genomic regions with significant differences (|log₂ fold change| > 0.58496) in histone modification between T cell states: Naïve vs Memory (left), Naïve vs Exhausted (center), and Memory vs Exhausted (right). Rows represent individual genomic peaks, and columns represent biological replicates, annotated by cell type. Separate panels are shown for H3K27ac, H3K4me3, H3K27me3, and H3K9me3 (top to bottom). Distinct clustering patterns highlight widespread and coordinated changes in chromatin accessibility and repression associated with T cell differentiation and exhaustion "}
 
 label_grobs <- arrangeGrob(
@@ -479,11 +481,11 @@ grid.arrange(label_grobs, col1_with_title, col2_with_title, col3_with_title,
 The heatmaps reveal that each histone modification exhibits substantial and coordinated changes in signal intensity between T cell states. Activating marks (H3K27ac, H3K4me3) generally show increased signal in memory T cells compared to naïve, while repressive marks (H3K27me3, H3K9me3) are more prominent in exhausted T cells. Hierarchical clustering demonstrates clear separation between cell types for all histone modifications, underscoring robust and reproducible epigenetic reprogramming during T cell differentiation and exhaustion. These patterns suggest that both activation and repression of chromatin regions are key features distinguishing naïve, memory, and exhausted T cell states.
 
 
-# Comparing all significant hPMTs of different cell type comparisons
+## 6.5) Comparing all significant hPMTs of different cell type comparisons
 
 To get an overview of how the different cell types differ in terms of hPMTs, all hPMT per cell type comparison were added to a new matrix. If a peak present in one hPMT was missing in another, values were set to zero for visualisatio and later removal.
 
-## Memory vs Naïve
+### 6.5.1) Memory vs Naïve
 
 ```{r}
 scaled_list <- list(scaled_signal_H3K4me3, scaled_signal_H3K27ac, scaled_signal_H3K27me3, scaled_signal_H3K9me3)
@@ -554,7 +556,7 @@ all_hmap1 <- pheatmap::pheatmap(combined_scaled[top_rows, ], breaks = my_breaks,
 ```
 
 
-## Exhausted vs Naïve 
+### 6.5.2)Exhausted vs Naïve 
 
 ```{r}
 # List of all scaled matrices
@@ -621,7 +623,7 @@ all_hmap2 <- pheatmap::pheatmap(combined_scaled_EXN[top_rows_EXN, ], breaks = my
 #rm(top_rows, scaled_filled_EXN)
 ```
 
-## Memory vs Exhausted
+### 6.5.3) Memory vs Exhausted
 
 ```{r}
 scaled_list_EXM <- list(scaled_signal_H3K4me3_EXM, scaled_signal_H3K27ac_EXM, scaled_signal_H3K27me3_EXM, scaled_signal_H3K9me3_EXM)
@@ -710,10 +712,11 @@ The most dramatic differences occur between these functionally opposite states, 
 
 
 These results suggest that T cell exhaustion represents an active epigenetic silencing process rather than simply a loss of memory cell characteristics. The distinct chromatin landscapes likely contribute to the functional differences between these T cell states and may represent therapeutic targets for reversing T cell exhaustion.
-# Annotation 
+
+# 7.) Annotation 
 ready for Valerie <3 
 
-
+## 7.1) Annotation Preprocessing
 For annotating genes we chose to exlude all rows that contain a 0 to hopefully have heatmaps that are a bit more easy to read.
 ```{r}
 anno_MN <-combined_scaled[top_rows, ]
@@ -777,15 +780,16 @@ grid.arrange(
 ```
 
 
-## Applying the annotations
+## 7.2) Applying the annotations
 
 
 
 
-## Numerical evaluation of activating, repressing and bivalent regions across cell type comparisons
+# 8.) Numerical Quantification of Heatmaps
+## 8.1) Numerical evaluation of activating, repressing and bivalent regions across cell type comparisons
 Next to the visual evaluation done using the heatmaps above, we were also interested in quantifying the high signal activating, repressing, and bivalent hPMT's across our cell type comparisons.
 
-### Naïve and Memory 
+### 8.1.1) Naïve and Memory 
 
 ```{r}
 
@@ -834,7 +838,7 @@ write.csv(bivalent_MN, file = "files/bivalent.csv", row.names = T)
 ```
 Using this approach we decrease the size of the dataset for comparing naïve and memory T cells to 308 peaks, which is substantially less than the initial 45174 peaks we looked at.
 
-### Naïve and Exhausted
+### 8.1.2) Naïve and Exhausted
 ```{r}
 # Activating High
 H3K4me3_EXN  <- combined_scaled_EXN[, 5:8]
@@ -881,7 +885,7 @@ write.csv(bivalent_EXN, file = "files/bivalent_EXN.csv", row.names = T)
 ```
 
 
-### Exhausted and Memory
+### 8.1.3) Exhausted and Memory
 ```{r}
 # Activating High
 H3K4me3_EXM  <- combined_scaled_EXM[, 5:8]

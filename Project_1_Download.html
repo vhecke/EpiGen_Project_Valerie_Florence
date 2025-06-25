@@ -13,7 +13,7 @@
 
 <meta name="date" content="2025-05-07" />
 
-<title>Project_Valerie_Florence_EpiGenetics</title>
+<title>Deciphering the role of Histone Modifications in Memory and Exhausted CD8 T Cells</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -373,13 +373,37 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">Project_Valerie_Florence_EpiGenetics</h1>
+<h1 class="title toc-ignore">Deciphering the role of Histone
+Modifications in Memory and Exhausted CD8 T Cells</h1>
 <h4 class="author">Valerie Heckendorn and Florence Marti</h4>
 <h4 class="date">2025-05-07</h4>
 
 </div>
 
 
+<div id="setup-and-packages" class="section level1">
+<h1>Setup and Packages</h1>
+<pre class="r"><code>suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(ensembldb)
+  library(GenomicRanges)
+  library(epiwraps)
+  library(rtracklayer)
+  library(ggplot2)
+  library(magick)
+  library(R.utils) 
+  library(MASS)
+  library(org.Mm.eg.db)
+  library(AnnotationDbi)
+  library(valr)
+  library(EnrichedHeatmap)
+  library(gridExtra)
+  library(grid)
+  library(limma)
+  library(plyranges)
+  library(dplyr)
+})</code></pre>
+</div>
 <div id="introduction-and-background" class="section level1">
 <h1>Introduction and background</h1>
 <p>Based on a mutual interest in immune cells, and data availability, we
@@ -392,7 +416,7 @@ the cell component of the adaptive immune system and are responsible for
 mediating cell-based immune responses. Naïve T cells are developed in
 the thymus and can be grouped into many subgroups, amongst them CD8+
 cells, which this analysis focuses on. Upon recognition of antigens by
-receptors on the cell surface, naïve CD8+ T cells (T<span class="math inline">\(_{naive}\)</span>), further referenced naïve T
+receptors on the cell surface, naïve CD8+ T cells (T<span class="math inline">\(_{Naive}\)</span>), further referenced naïve T
 cells, undergo activation, clonal expansion, and differentiation into
 mature T cells. Once matured, T cells can take up their intended
 function of killing infected cells, producing cytokines, and regulating
@@ -408,7 +432,7 @@ T<span class="math inline">\(_{Mem}\)</span> on a transcriptomic and
 epigenetic level. [<span class="citation">Wherry (2011)</span>]<span class="citation">(Angelosanto and Wherry 2010)</span></p>
 <p>Compared to T<span class="math inline">\(_{Mem}\)</span>, T<span class="math inline">\(_{Exh}\)</span> show a unique open chromatin
 landscape, which was explored by comparing posttranslational histone
-modifications (hPTMs) of T<span class="math inline">\(_{naive}\)</span>,
+modifications (hPTMs) of T<span class="math inline">\(_{Naive}\)</span>,
 T<span class="math inline">\(_{Mem}\)</span>, and T<span class="math inline">\(_{Exh}\)</span>. The four hPTMs that were analysed
 are H3K4me4, H3K24ac, H3K27me3, H3K9me3. H3K4me4 and H3K24ac are
 associated with active promoters, while H3K27me3 and H3K9me3 are
@@ -419,9 +443,9 @@ genes that are poised for transcription, and depending on
 differentiation, the region is either active (H3K4me3) or repressed
 (H3K27me3).</p>
 <p>When reading the paper, we decided that for our analysis we wanted to
-focus on two main points: (1) comparing the chromatin states of , T<span class="math inline">\(_{Mem}\)</span>, T<span class="math inline">\(_{Exh}\)</span>, and T<span class="math inline">\(_{naive}\)</span>, and (2) focusing on bivalent
+focus on two main points: (1) comparing the chromatin states of T<span class="math inline">\(_{Mem}\)</span>, T<span class="math inline">\(_{Exh}\)</span>, and T<span class="math inline">\(_{Naive}\)</span>, and (2) focusing on bivalent
 regions containing both H3K27me3 and H3K4me3 hPMTs to answer our
-question whether during transition from T<span class="math inline">\(_{naive}\)</span> to T<span class="math inline">\(_{Exh}\)</span> or T<span class="math inline">\(_{Mem}\)</span> these bivalent regions show
+question whether during transition from T<span class="math inline">\(_{Naive}\)</span> to T<span class="math inline">\(_{Exh}\)</span> or T<span class="math inline">\(_{Mem}\)</span> these bivalent regions show
 irreversible changes that could potentially explain the phenotypes of
 these cell types.</p>
 </div>
@@ -435,10 +459,11 @@ the analysis. All normalised hPMTs and the normalised CTCF file were
 download in txt format, while all hPMTs for all cell types were
 downloaded as bw files. T<span class="math inline">\(_{Mem}\)</span>
 were harvested at D30 after seeding, T<span class="math inline">\(_{Exh}\)</span> were harvested at D32 after
-seeding, and T<span class="math inline">\(_{naive}\)</span> were
-harvested in two groups at both of the timepoints. Since the data was
-available, we decided to whenever possible compare the cell types at the
-same timepoint. When comparing the T<span class="math inline">\(_{Mem}\)</span> and T<span class="math inline">\(_{Exh}\)</span>, this was not possible.</p>
+seeding, and T<span class="math inline">\(_{Naive}\)</span> were
+harvested in two groups at both of the timepoints. To facilitate the
+comparison, replicates harvested at D30 post seeding were used for
+T<span class="math inline">\(_{Mem}\)</span> and while for T<span class="math inline">\(_{Exh}\)</span>, replicates harvested at D32 post
+seeding were used.</p>
 </div>
 <div id="quality-control-of-peaks" class="section level2">
 <h2>Quality control of peaks</h2>
@@ -453,26 +478,33 @@ and histone modifications would cluster.</p>
 <p>Since the peak data was only available as txt files, we had to
 convert them to GRanges files. This was done with assistance from
 Perplexity AI. After converting the files, we split the files to only
-look at our cells of interest, to compare T<span class="math inline">\(_{naive}\)</span>-T<span class="math inline">\(_{Mem}\)</span>, T<span class="math inline">\(_{naive}\)</span>-T<span class="math inline">\(_{Exh}\)</span>, and T<span class="math inline">\(_{Mem}\)</span>-T<span class="math inline">\(_{Exh}\)</span>.</p>
+look at our cells of interest, to compare T<span class="math inline">\(_{Naive}\)</span>-T<span class="math inline">\(_{Mem}\)</span>, T<span class="math inline">\(_{Naive}\)</span>-T<span class="math inline">\(_{Exh}\)</span>, and T<span class="math inline">\(_{Mem}\)</span>-T<span class="math inline">\(_{Exh}\)</span>.</p>
 <p>To filter for significantly changed hPMTs in the different cell type
 comparison, the mean(log2(signal)) of both cell types was compared,
 always dividing the mean of the first named by the second named
-(i.e. T<span class="math inline">\(_{naive}\)</span>-T<span class="math inline">\(_{Mem}\)</span>: mean(log2(signal T<span class="math inline">\(_{Mem}\)</span>)) / mean(log2(signal T<span class="math inline">\(_{naive}\)</span>))). To avoid a log2(0), a
+(i.e. T<span class="math inline">\(_{Naive}\)</span>-T<span class="math inline">\(_{Mem}\)</span>: mean(log2(signal T<span class="math inline">\(_{Mem}\)</span>)) / mean(log2(signal T<span class="math inline">\(_{Naive}\)</span>))). To avoid a log2(0), a
 pseudocount of 1e-6 was added to all the mean values. Absolute values
 &gt; 0.1 were deemed significant and further analysed.</p>
 <p>First we looked at changes in hPMTs within each histone modification
 by generating heatmaps, then in a second step, all hPMTs were combined
 into one heatmap to see if the regions overlapped.</p>
 <p>In a final step of this part, the highly expressed active, repressed,
-and bivalent regions were exported to decrease the working power needed
-for the analysis.</p>
+and bivalent regions were were extracted and compared to see how the
+regions change numerically during the differentiation steps.</p>
 </div>
+</div>
+<div id="clustering-and-enriched-heatmaps" class="section level1">
+<h1>Clustering and Enriched Heatmaps</h1>
+<p>For analysis of the different histone modfications, the peaks and
+tracks were plotted and analysed using the EnrichedHeatmaps package.</p>
 </div>
 <div id="downloading-of-data" class="section level1">
 <h1>Downloading of data</h1>
-<div id="peaks-and-histone-modifications" class="section level2">
-<h2>Peaks and Histone modifications</h2>
-<pre class="r"><code>download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FCTCF%5FwID%2Etxt%2Egz&quot;, &quot;peaks/CTCF.txt.gz&quot;)
+<p>Since downloading and processing the data, the GEO website for this
+dataset has endured a connection failure. The downloaded datasets are be
+included in the hand-in file. ## Peaks</p>
+<pre class="r"><code>dir.create(&quot;peaks&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FCTCF%5FwID%2Etxt%2Egz&quot;, &quot;peaks/CTCF.txt.gz&quot;)
 gunzip(&quot;peaks/CTCF.txt.gz&quot;)
 download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FH3K27ac%5FwID%2Etxt%2Egz&quot;, &quot;peaks/H3K27ac_wID.txt.gz&quot;)
 gunzip(&quot;peaks/H3K27ac_wID.txt.gz&quot;)
@@ -482,65 +514,55 @@ download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp
 gunzip(&quot;peaks/H3K4me3_wID.txt.gz&quot;)
 download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FH3K9me3%5FwID%2Etxt%2Egz&quot;, &quot;peaks/H3K9me3_wID.txt.gz&quot;)
 gunzip(&quot;peaks/H3K9me3_wID.txt.gz&quot;)</code></pre>
-<p>The peaks and histone modifications were not published under the same
-accession number.</p>
-<p>For Naive and Memory cell comparison, day 30 and replicate 1 were
-chosen.</p>
+<div id="bigwig-files" class="section level2">
+<h2>BigWig Files</h2>
 <div id="naive-t-cells" class="section level3">
-<h3>Naive T cells</h3>
+<h3>Naive T-Cells</h3>
 <pre class="r"><code>options(timeout = 12000)
 
+dir.create(&quot;BW&quot;)
 # Key Activating
 
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699095&amp;format=file&amp;file=GSM8699095%5FNaive%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS1%2Escale%2Ebw&quot;, &quot;H3K4me3_naive_30.bw.gz&quot;)
-gunzip(&quot;H3K4me3_naive_30.bw.gz&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699095&amp;format=file&amp;file=GSM8699095%5FNaive%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS1%2Escale%2Ebw&quot;, &quot;BW/H3K4me3_naive_30.bw.&quot;)
 
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699079&amp;format=file&amp;file=GSM8699079%5FNaive%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS1%2Escale%2Ebw&quot;, &quot;H3K27ac_naive_30.bw.gz&quot;)
-gunzip(&quot;H3K27ac_naive_30.bw.gz&quot;)
+
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699079&amp;format=file&amp;file=GSM8699079%5FNaive%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS1%2Escale%2Ebw&quot;, &quot;BW/H3K27ac_naive_30.bw&quot;)
+
 
 # KeyRepressive
 
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699111&amp;format=file&amp;file=GSM8699111%5FNaive%5FP14%5FDay30%5FH3K27me3%5FRep2%5FS6%2Escale%2Ebw&quot;, &quot;H3K27me3_naive_30.bw.gz&quot;)
-gunzip(&quot;H3K27me3_naive_30.bw.gz&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699111&amp;format=file&amp;file=GSM8699111%5FNaive%5FP14%5FDay30%5FH3K27me3%5FRep2%5FS6%2Escale%2Ebw&quot;, &quot;BW/H3K27me3_naive_30.bw&quot;)
 
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699127&amp;format=file&amp;file=GSM8699127%5FNaive%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS1%2Escale%2Ebw&quot;, &quot;H3K9me3_naive_30.bw.gz&quot;)
-gunzip(&quot;H3K9me3_naive_30.bw.gz&quot;)</code></pre>
+
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699127&amp;format=file&amp;file=GSM8699127%5FNaive%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS1%2Escale%2Ebw&quot;, &quot;BW/H3K9me3_naive_30.bw&quot;)</code></pre>
 </div>
-<div id="t-mem" class="section level3">
-<h3>T mem</h3>
+<div id="memory-t-cells" class="section level3">
+<h3>Memory T-Cells</h3>
 <pre class="r"><code>options(timeout = 12000)
 
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699103&amp;format=file&amp;file=GSM8699103%5FArm%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS5%2Escale%2Ebw&quot;, &quot;H3K4me3_memory.bw.gz&quot;)
-gunzip(&quot;H3K4me3_memory.bw.gz&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699103&amp;format=file&amp;file=GSM8699103%5FArm%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS5%2Escale%2Ebw&quot;, &quot;BW/H3K4me3_memory.bw&quot;)
 
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699087&amp;format=file&amp;file=GSM8699087%5FArm%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS5%2Escale%2Ebw&quot;, &quot;H3K27ac_memory.bw.gz&quot;)
-gunzip(&quot;H3K27ac_memory.bw.gz&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699087&amp;format=file&amp;file=GSM8699087%5FArm%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS5%2Escale%2Ebw&quot;, &quot;BW/H3K27ac_memory.bw&quot;)
 
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699119&amp;format=file&amp;file=GSM8699119%5FArm%5FP14%5FDay30%5FH3K27me3%5FRep1%5FS7%2Escale%2Ebw&quot;, &quot;H3K27me3_memory.bw.gz&quot;)
-gunzip(&quot;H3K27me3_memory.bw.gz&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699119&amp;format=file&amp;file=GSM8699119%5FArm%5FP14%5FDay30%5FH3K27me3%5FRep1%5FS7%2Escale%2Ebw&quot;, &quot;BW/H3K27me3_memory.bw&quot;)
 
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699135&amp;format=file&amp;file=GSM8699135%5FArm%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS3%2Escale%2Ebw&quot;, &quot;H3K9me3_memory.bw.gz&quot;)
-gunzip(&quot;H3K9me3_memory.bw.gz&quot;)</code></pre>
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699135&amp;format=file&amp;file=GSM8699135%5FArm%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS3%2Escale%2Ebw&quot;, &quot;BW/H3K9me3_memory.bw&quot;)</code></pre>
 </div>
-<div id="t-exh" class="section level3">
-<h3>T exh</h3>
+<div id="exhausted-t-cells" class="section level3">
+<h3>Exhausted T-Cells</h3>
 <pre class="r"><code>options(timeout = 12000)
 
 #H3K27ac, Day32, rep1
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699091&amp;format=file&amp;file=GSM8699091%5FCl13%5FP14%5FDay32%5FH3K27ac%5FRep1%5FS13%2Escale%2Ebw&quot;, &quot;H3K27ac_EX.bw&quot;)
-H3K27ac_EX &lt;- rtracklayer::import(&quot;H3K27ac_EX.bw&quot;, format = &quot;bw&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699091&amp;format=file&amp;file=GSM8699091%5FCl13%5FP14%5FDay32%5FH3K27ac%5FRep1%5FS13%2Escale%2Ebw&quot;, &quot;BW/H3K27ac_EX.bw&quot;)
 
 #H3K27me3, Day32, rep1
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699123&amp;format=file&amp;file=GSM8699123%5FCl13%5FP14%5FDay32%5FH3K27me3%5FRep1%5FS9%2Escale%2Ebw&quot;, &quot;H3K27me3_EX.bw&quot;)
-H3K27me3_EX &lt;- rtracklayer::import(&quot;H3K27me3_EX.bw&quot;, format = &quot;bw&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699123&amp;format=file&amp;file=GSM8699123%5FCl13%5FP14%5FDay32%5FH3K27me3%5FRep1%5FS9%2Escale%2Ebw&quot;, &quot;BW/H3K27me3_EX.bw&quot;)
 
 #H3K4me3, Day32, rep1
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699107&amp;format=file&amp;file=GSM8699107%5FCl13%5FP14%5FDay32%5FH3K4me3%5FRep1%5FS13%2Escale%2Ebw&quot;, &quot;H3K4me3_EX.bw&quot;)
-H3K4me3_EX &lt;- rtracklayer::import(&quot;H3K4me3_EX.bw&quot;, format = &quot;bw&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699107&amp;format=file&amp;file=GSM8699107%5FCl13%5FP14%5FDay32%5FH3K4me3%5FRep1%5FS13%2Escale%2Ebw&quot;, &quot;BW/H3K4me3_EX.bw&quot;)
 
 #H3K9me3, Day32, rep1
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699139&amp;format=file&amp;file=GSM8699139%5FCl13%5FP14%5FDay32%5FH3K9me3%5FRep1%5FS5%2Escale%2Ebw&quot;, &quot;H3K9me3_EX.bw&quot;)
-H3K9me3_EX &lt;- rtracklayer::import(&quot;H3K9me3_EX.bw&quot;, format = &quot;bw&quot;)</code></pre>
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699139&amp;format=file&amp;file=GSM8699139%5FCl13%5FP14%5FDay32%5FH3K9me3%5FRep1%5FS5%2Escale%2Ebw&quot;, &quot;BW/H3K9me3_EX.bw&quot;)</code></pre>
 </div>
 </div>
 <div id="bibliography" class="section level2 unnumbered">
