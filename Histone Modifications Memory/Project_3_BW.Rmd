@@ -1,0 +1,85 @@
+---
+title: "BW_Files_Analysis_Project"
+author: "Florence Marti"
+date: "2025-06-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence/Histone Modifications Memory")
+```
+
+```{r, include = FALSE}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(ensembldb)
+  library(GenomicRanges)
+  library(epiwraps)
+  library(rtracklayer)
+  library(ggplot2)
+  library(magick)
+  library(R.utils) 
+  library(MASS)
+  library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+  library(org.Hs.eg.db)
+  library(AnnotationDbi)
+  library(valr)
+  library(EnrichedHeatmap)
+  library(gridExtra)
+  library(grid)
+})
+```
+
+# Comparing the histone modifications of naive T cells
+
+```{r}
+# Naive
+bwfiles_naive <- list.files("bigwig_files", pattern = "_naive.bw$", full.names = TRUE)
+names(bwfiles_naive) <- gsub("\\.bw$", "", basename(bwfiles_naive))
+
+naive_regions <- reduce(unlist(GRangesList(peaks)))
+sm_n <- signal2Matrix(bwfiles_naive, regions = naive_regions, w = 40)
+
+
+naive_regions_f <- reduce(unlist(GRangesList(peaks_filtered)))
+sm_n_filtered <- signal2Matrix(bwfiles_naive, regions = naive_regions_f, w = 40)
+
+# Memory
+bwfiles_memory <- list.files("bigwig_files", pattern = "_memory.bw$", full.names = TRUE)
+names(bwfiles_memory) <- gsub("\\.bw$", "", basename(bwfiles_memory))
+
+memory_regions <- reduce(unlist(GRangesList(peaks)))
+sm_m <- signal2Matrix(bwfiles_memory, regions = memory_regions, w = 40)
+
+memory_regions_f <- reduce(unlist(GRangesList(peaks_filtered)))
+sm_m_filtered <- signal2Matrix(bwfiles_memory, regions = memory_regions_f, w = 40)
+```
+
+
+```{r}
+```
+Comparing the enriched heatmaps of all of the peaks and the peaks we filtered out as significant
+
+```{r}
+plotEnrichedHeatmaps(sm_n, trim = 0.05)
+```
+
+
+```{r}
+plotEnrichedHeatmaps(sm_n_filtered, trim = 0.05)
+```
+```{r}
+plotEnrichedHeatmaps(sm_m, trim=0.05)
+```
+
+
+```{r}
+plotEnrichedHeatmaps(sm_m, trim=0.05)
+
+meanEnrichment <- rowMeans(score(sm_m))
+sm_m_2 <- sm_m[which(meanEnrichment >= median(meanEnrichment)),]
+
+plotEnrichedHeatmaps(sm_m_2)
+```
+
