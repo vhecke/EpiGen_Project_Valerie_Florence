@@ -31,6 +31,7 @@ suppressPackageStartupMessages({
   library(MotifDb)
   library(universalmotif)
   library(PWMEnrich)
+  library(cowplot)
 })
 ```
 
@@ -40,8 +41,9 @@ ensdb <- ah[["AH89211"]] # mouse ensembldb object
 genes <- genes(ensdb)
 ```
 
-# Comparing the histone modifications of naive T cells
-First reinporting the GRanges files of all the peaks
+# 9.) Comparing the histone modifications of naive T-cells
+## 9.1) Importing the peaks from part 1
+
 ```{r}
 peaks_part1 <- GRangesList(
   H3K27ac = import("peak_bed_files/H3K27ac_peaks.bed"),
@@ -51,72 +53,110 @@ peaks_part1 <- GRangesList(
 )
 
 ```
-When trying to apply the filters from the lecture (w10), we were left with 0 values. this is why we proceeded with all of the values 
-- one idea might be to apply the significant rows that we found in the part prior
+## 9.2) Importing the BigWig files and constructing the signal matrices for the individual cell types
 
 ```{r}
 # Naive
-bwfiles_naive <- list.files("bigwig_files", pattern = "_naive.bw$", full.names = TRUE)
+bwfiles_naive <- list.files("BW", pattern = "_naive.bw$", full.names = TRUE)
 names(bwfiles_naive) <- gsub("\\.bw$", "", basename(bwfiles_naive))
 naive_regions <- reduce(unlist(GRangesList(peaks_part1)))
 sm_n <- signal2Matrix(bwfiles_naive, regions = naive_regions, w = 40)
 
 # Memory
-bwfiles_memory <- list.files("bigwig_files", pattern = "_memory.bw$", full.names = TRUE)
+bwfiles_memory <- list.files("BW", pattern = "_memory.bw$", full.names = TRUE)
 names(bwfiles_memory) <- gsub("\\.bw$", "", basename(bwfiles_memory))
 memory_regions <- reduce(unlist(GRangesList(peaks_part1)))
 sm_m <- signal2Matrix(bwfiles_memory, regions = memory_regions, w = 40)
 
 # Exhausted
-bwfiles_exh <- list.files("bigwig_files", pattern = "_EX.bw$", full.names = TRUE)
+bwfiles_exh <- list.files("BW", pattern = "_EX.bw$", full.names = TRUE)
 names(bwfiles_exh) <- gsub("\\.bw$", "", basename(bwfiles_exh))
 exh_regions <- reduce(unlist(GRangesList(peaks_part1)))
 sm_e <- signal2Matrix(bwfiles_exh, regions = exh_regions, w = 40)
 
 ```
-
+## 9.3) Filtering
+Using only the top 5000 hits of the signal matrices, due to processing power of the computers used.
 ```{r}
 sm_m1 <- sm_m[1:5000,]
 sm_n1 <- sm_n[1:5000,]
 sm_e1<- sm_e[1:5000,]
 ```
 
+## 9.4) Plotting the enriched heatmaps for the filtered signal matrices
 
-```{r, fig.height= 5, fig.width=10}
+### 9.4.1) Naïve T-cells
+
+```{r, fig.height= 5, fig.width=10, fig.cap="Figure 7. Enriched heatmaps of histone modifications at genomic regions in naïve T-cells. Heatmaps display the enrichment of four histone modifications—H3K27ac, H3K27me3, H3K4me3, and H3K9me3—across genomic regions centered at defined loci (center, dashed line), spanning ±2 kb. Each row represents an individual genomic region, clustered by signal intensity. The color scale indicates the normalised ChIP-seq signal for each modification, as shown by the color bars on the right. Above each heatmap, the average signal profile (red line) with shaded confidence intervals summarises enrichment patterns across all regions."}
 plotEnrichedHeatmaps(sm_n1, multiScale = T, cluster_rows = T, show_row_dend = T)
 ```
 
+H3K27ac and H3K4me3 display strong enrichment precisely at the centre of the regions, indicating these loci are marked by active chromatin modifications typical of promoters and active enhancers in naïve T-cells.
 
-```{r, fig.height= 5, fig.width=10}
+H3K27me3 shows low or absent signal at the centre, with some enrichment at a subset of regions, consistent with its role as a repressive mark.
+
+H3K9me3 exhibits minimal signal at the centre in most regions but is enriched at a distinct subset, reflecting its association with heterochromatin and gene silencing.
+
+The clustering of regions highlights distinct chromatin states, with active marks (H3K27ac, H3K4me3) and repressive marks (H3K27me3, H3K9me3) often mutually exclusive across loci.
+
+
+### 9.4.2) Memory T-cells
+```{r, fig.height= 5, fig.width=10, fig.cap="Figure 8. Enriched heatmap of histone modifications at genomic regions in memory T-cells. Heatmaps display the enrichment of four histone modifications—H3K27ac, H3K27me3, H3K4me3, and H3K9me3—across genomic regions centred at defined loci (centre, dashed line), spanning ±2 kb. Each row represents an individual genomic region, clustered by signal intensity. The colour scale indicates the normalised ChIP-seq signal for each modification, as shown by the colour bars on the right. Above each heatmap, the average signal profile (red line) with shaded confidence intervals summarises enrichment patterns across all regions"}
 plotEnrichedHeatmaps(sm_m1,  multiScale = T, cluster_rows = T, show_row_dend = T)
 ```
+H3K27ac and H3K4me3 exhibit strong enrichment at the centre of regions, indicating active chromatin marks typical of promoters and enhancers remain prominent in memory T-cells.
+
+H3K27me3 shows a more complex pattern compared to naïve T-cells, with notable enrichment at the centre in a subset of regions and additional peaks flanking the centre, suggesting altered repressive chromatin organisation in memory T-cells.
+
+H3K9me3 displays enrichment at both central and flanking regions in distinct subsets of loci, indicating heterochromatin formation at specific genomic sites during memory T cell differentiation.
+
+The clustering reveals distinct chromatin states, with some regions showing co-occurrence of active and repressive marks, particularly evident in the H3K27me3 pattern.
 
 
-```{r, fig.height= 5, fig.width=10}
+### 9.4.3) Exhausted T-cells
+
+```{r, fig.height= 5, fig.width=10, fig.cap="Figure 9. Heatmaps and average profiles of histone modifications at genomic regions in exhausted T-cells. Heatmaps display the enrichment of four histone modifications—H3K27ac, H3K27me3, H3K4me3, and H3K9me3—across genomic regions centred at defined loci (centre, dashed line), spanning ±2 kb. Each row represents an individual genomic region, clustered by signal intensity as shown in the dendrogram on the left. The colour scales indicate the normalised ChIP-seq signal for each modification. Above each heatmap, the average signal profile (red line) with shaded confidence intervals summarises enrichment patterns across all regions."}
 plotEnrichedHeatmaps(sm_e1,  multiScale = T, cluster_rows = T, show_row_dend = T)
 ```
+H3K27ac and H3K4me3 maintain strong enrichment at the centre of regions, indicating that active chromatin marks persist at key regulatory loci in exhausted T-cells, though with potentially altered intensity compared to other T cell states.
 
-# Clustering
+H3K27me3 exhibits a distinctive pattern with moderate enrichment at central regions and additional signal in flanking areas, suggesting complex repressive chromatin reorganisation characteristic of T cell exhaustion.
 
-Finding the best kmeans for clustering of the samples
+H3K9me3 shows the most dramatic redistribution, with strong enrichment concentrated in distinct clusters of regions, indicating extensive heterochromatin formation and gene silencing associated with the exhausted phenotype.
+
+The hierarchical clustering reveals distinct chromatin signatures, with clear segregation of regions based on their histone modification profiles, particularly evident for H3K9me3 enrichment patterns.
+
+### 9.4.4) Conclusion
+
+Naïve T-cells show a clean, focused pattern: most genomic regions are marked by active histone modifications (H3K27ac/H3K4me3) at their centers, while repressive marks (H3K27me3/H3K9me3) only appear in specific, limited areas. This reflects a streamlined regulatory landscape ready for activation.
+
+Memory T-cells develop greater complexity: repressive marks spread more broadly across the genome, creating a layered pattern where active marks still dominate key regulatory sites but coexist with more extensive repressive zones. This mirrors their enhanced adaptability from differentiation.
+
+Exhausted T-cells undergo dramatic rewiring: they maintain active marks at core regulatory regions but develop concentrated "islands" of H3K9me3-mediated heterochromatin. This creates a patchwork landscape where repressive modifications become more prominent and spatially organised – a signature of their dysfunctional state.
+
+## 9.5) Clustering
+
+### 9.5.1) Finding the best kmeans for clustering of the samples
+
 ```{r}
 cl_n <- clusterSignalMatrices(sm_n1, k=2:7)
-cluster1 <- ggplot(cl_n$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained") + ggtitle("Cluster Signal Matrix Naive T-Cells")  + theme_minimal()
+cluster1 <- ggplot(cl_n$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained") + ggtitle("A) Cluster Signal Matrix Naive T-Cells")  + theme_minimal()
 
 cl_m <- clusterSignalMatrices(sm_m1, k=2:7)
-cluster2 <- ggplot(cl_m$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained") + ggtitle("Cluster Signal Matrix Memory T-Cells") + theme_minimal()
+cluster2 <- ggplot(cl_m$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained") + ggtitle("B) Cluster Signal Matrix Memory T-Cells") + theme_minimal()
 
 cl_e <- clusterSignalMatrices(sm_e1, k=2:7)
-cluster3 <- ggplot(cl_e$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained")+ ggtitle("Cluster Signal Matrix Exhausted T-Cells") + theme_minimal()
+cluster3 <- ggplot(cl_e$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained")+ ggtitle("C) Cluster Signal Matrix Exhausted T-Cells") + theme_minimal()
 ```
-```{r, fig.height= 10, fig.width=10}
+```{r, fig.height= 10, fig.width=10, fig.cap="Figure 10. K-means clustering: Variance Explained by k for all three T-cell types: A) naive T-cells, B) memory T-cells, C) exhausted T-cells. x-axis visualises the numbers of clusters producced ranging from 2-7 clusters, y-axis shows the corresponding variance that is explained by these clusters." }
 grid.arrange(cluster1, cluster2, cluster3,
              ncol = 1,
              top = "K-Means Clustering: Variance Explained per k")
 
 ```
+In all 3 cell types we see a similar pattern of increase of the variance explained by increasing the clusters. For all three groups the same amount of clusters (k= 6) was chosen for further analysis. 
 
-
+### 9.5.2) Setting the clusters
 
 ```{r}
 set.seed(123)  # to ensure that it gives the same results everytime
@@ -126,7 +166,7 @@ cl_k_e <- clusterSignalMatrices(sm_e1, k=6)
 ```
 using k = 6 we have an average 95% of the variance explained.
 
-## Adding clusters to the signal matrices and plotting the enriched heatmaps
+### Adding clusters to the signal matrices and plotting the enriched heatmaps
 
 ```{r}
 rowData(sm_n1)$cluster <- cl_k_n
@@ -134,16 +174,20 @@ rowData(sm_m1)$cluster <- cl_k_m
 rowData(sm_e1)$cluster <- cl_k_e
 
 mycolors <- c("1"="pink", "2"="lightblue", "3"="darkgreen", "4"="orange", "5"="purple", "6"="blue")
+```
+
+
+```{r, fig.height= 5, fig.width=8, fig.cap= "Figure 11. Enriched heatmaps of histone modifications at clustered genomic regions in naïve T-cells. Heatmaps showing the distribution of H3K27ac, H3K27me3, H3K4me3, and H3K9me3 signals (±2 kb from centre, dashed line) for six region clusters. Active marks (H3K27ac, H3K4me3) are enriched at the centre in clusters 2,3,4, and 5, while repressive marks (H3K27me3, H3K9me3) are largely absent. Average signal profiles are shown above each heatmap."}
 plotEnrichedHeatmaps(sm_n1, row_split="cluster", mean_color=mycolors, colors=c("white","darkred"))
 ```
 
 
-```{r}
+```{r, fig.height= 5, fig.width=8, fig.cap= "Figure 12. Enriched heatmaps of histone modifications at clustered genomic regions in memory  T-cells. Heatmaps showing the distribution of H3K27ac, H3K27me3, H3K4me3, and H3K9me3 signals (±2 kb from centre, dashed line) for six region clusters. Active marks (H3K27ac, H3K4me3) are enriched at the centre in clusters 1,2,4, and 6, while repressive mark H3K27me3 is enriched at the centre in cluster 3. H3K9me3 is largely absent. Average signal profiles are shown above each heatmap."}
 plotEnrichedHeatmaps(sm_m1, row_split="cluster", mean_color=mycolors, colors=c("white","darkred"))
 ```
 
 
-```{r}
+```{r, fig.height= 5, fig.width=8, fig.cap= "Figure 13. Enriched heatmaps of histone modifications at clustered genomic regions in exhausted T-cells. Heatmaps showing the distribution of H3K27ac, H3K27me3, H3K4me3, and H3K9me3 signals (±2 kb from centre, dashed line) for six region clusters. Active marks (H3K27ac, H3K4me3) are enriched at the centre in clusters 1,3,4, and 6, while repressive mark H3K27me3 is enriched at the centre in cluster 2. H3K9me3 is largely absent. Average signal profiles are shown above each heatmap."}
 plotEnrichedHeatmaps(sm_e1, row_split="cluster", mean_color=mycolors, colors=c("white","darkred"))
 ```
 
@@ -154,14 +198,12 @@ naive <- meltSignals(sm_n1, splitBy=cl_k_n)
 memory <- meltSignals(sm_m1, splitBy=cl_k_m)
 exhausted <- meltSignals(sm_e1, splitBy=cl_k_e)
 
-melt1 <- ggplot(naive, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split) + ggtitle("Naive T-Cells")
-melt2 <- ggplot(memory, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split) + ggtitle("Memory T-Cells")
-melt3 <- ggplot(exhausted, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split) + ggtitle("Exhausted T-Cells")
+melt1 <- ggplot(naive, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split) + ggtitle("A) Naive T-Cells")
+melt2 <- ggplot(memory, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split) + ggtitle("B) Memory T-Cells")
+melt3 <- ggplot(exhausted, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split) + ggtitle("C) Exhausted T-Cells")
 ```
 
-```{r, fig.height = 10, fig.width=8}
-library(cowplot)
-
+```{r, fig.height = 10, fig.width=8, fig.cap= "Figure 14. Average profiles of histone modifications across six genomic region clusters in A) naïve T-cells, B) memory T-cells, and C) exhausted T-cells. Line plots show mean signal for H3K27ac, H3K27me3, H3K4me3, and H3K9me3 (±2 kb from centre, position 0) in each cluster. A) Clusters 2, 4, and 5 display strong central enrichment of active marks (H3K4me3, H3K27ac), while repressive mark H3K27me3 presents a low across enrichment in cluster 1. H3K9me3 is absent in all clusters. B) Clusters 1, 4, and 6 show strong central enrichment for active marks, while cluster 3 shows strong central enrichment for H2K27me3 repression. C) Clusters 1, 4, and 6 showing strong enrichment for active marks, and cluster 3 showing mild enrichment for active marks. Cluster 2 showing mild enrichment for repressive mark H3K27me3. "}
 plot_grid(melt1, melt2, melt3, ncol = 1)
 ```
 
