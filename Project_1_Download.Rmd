@@ -84,14 +84,14 @@ Since downloading and processing the data, the GEO website for this dataset has 
 dir.create("peaks")
 download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FCTCF%5FwID%2Etxt%2Egz", "peaks/CTCF.txt.gz")
 gunzip("peaks/CTCF.txt.gz")
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K27ac%5FwID%2Etxt%2Egz", "peaks/H3K27ac_wID.txt.gz")
-gunzip("peaks/H3K27ac_wID.txt.gz")
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K27me3%5FwID%2Etxt%2Egz", "peaks/H3K27me3_wID.txt.gz")
-gunzip("peaks/H3K27me3_wID.txt.gz")
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K4me3%5FwID%2Etxt%2Egz", "peaks/H3K4me3_wID.txt.gz")
-gunzip("peaks/H3K4me3_wID.txt.gz")
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K9me3%5FwID%2Etxt%2Egz", "peaks/H3K9me3_wID.txt.gz")
-gunzip("peaks/H3K9me3_wID.txt.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K27ac%5FwID%2Etxt%2Egz", "peaks/H3K27ac.txt.gz")
+gunzip("peaks/H3K27ac.txt.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K27me3%5FwID%2Etxt%2Egz", "peaks/H3K27me3.txt.gz")
+gunzip("peaks/H3K27me3.txt.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K4me3%5FwID%2Etxt%2Egz", "peaks/H3K4me3.txt.gz")
+gunzip("peaks/H3K4me3.txt.gz")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&format=file&file=GSE285245%5FNormRC%5FH3K9me3%5FwID%2Etxt%2Egz", "peaks/H3K9me3.txt.gz")
+gunzip("peaks/H3K9me3.txt.gz")
 
 ```
 
@@ -104,18 +104,18 @@ options(timeout = 12000)
 dir.create("BW")
 # Key Activating
 
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699095&format=file&file=GSM8699095%5FNaive%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS1%2Escale%2Ebw", "BW/H3K4me3_naive_30.bw.")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699095&format=file&file=GSM8699095%5FNaive%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS1%2Escale%2Ebw", "BW/H3K4me3_naive.bw.")
 
 
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699079&format=file&file=GSM8699079%5FNaive%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS1%2Escale%2Ebw", "BW/H3K27ac_naive_30.bw")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699079&format=file&file=GSM8699079%5FNaive%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS1%2Escale%2Ebw", "BW/H3K27ac_naive.bw")
 
 
 # KeyRepressive
 
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699111&format=file&file=GSM8699111%5FNaive%5FP14%5FDay30%5FH3K27me3%5FRep2%5FS6%2Escale%2Ebw", "BW/H3K27me3_naive_30.bw")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699111&format=file&file=GSM8699111%5FNaive%5FP14%5FDay30%5FH3K27me3%5FRep2%5FS6%2Escale%2Ebw", "BW/H3K27me3_naive.bw")
 
 
-download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699127&format=file&file=GSM8699127%5FNaive%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS1%2Escale%2Ebw", "BW/H3K9me3_naive_30.bw")
+download.file("https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699127&format=file&file=GSM8699127%5FNaive%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS1%2Escale%2Ebw", "BW/H3K9me3_naive.bw")
 
 
 

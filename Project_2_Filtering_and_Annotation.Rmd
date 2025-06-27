@@ -229,23 +229,23 @@ Signal intensities were extracted from GRanges objects for each hPMT (H3K27ac, H
 ```{r}
 # Naïve = cols 7:10, Memory = cols 11:14, Exhausted: 15:18
 H3K27ac_signal <- cbind(
-  naïve = H3K27ac_df[, 7:10],
+  naive = H3K27ac_df[, 7:10],
   memory = H3K27ac_df[, 11:14],
   exh = H3K27ac_df[, 15:18]
 )
 H3K27me3_signal <- cbind( 
-  naïve = H3K27me3_df[, 7:10],
+  naive = H3K27me3_df[, 7:10],
   memory = H3K27me3_df[, 11:14],
   exh = H3K27me3_df[, 15:18]
 )
 H3K4me3_signal <- cbind(
-  naïve = H3K4me3_df[, 7:10],
+  naive = H3K4me3_df[, 7:10],
   memory = H3K4me3_df[, 11:14],
   exh = H3K4me3_df[, 15:18]
 )
 
 H3K9me3_signal <- cbind(
-  naïve = H3K9me3_df[, 7:10],
+  naive = H3K9me3_df[, 7:10],
   memory = H3K9me3_df[, 11:14],
   exh = H3K9me3_df[, 15:18]
 )
@@ -262,42 +262,42 @@ In order to avoid log2(0), a small pseudocount was added.
 ```{r}
 pseudocount <- 1e-6
 ## H3K4me3
-mean_naïve_H3K4me3 <- rowMeans(H3K4me3_signal[, 1:4])   # 40269 elements
+mean_naive_H3K4me3 <- rowMeans(H3K4me3_signal[, 1:4])   # 40269 elements
 mean_memory_H3K4me3 <- rowMeans(H3K4me3_signal[, 5:8])  
 mean_exh_H3K4me3 <- rowMeans(H3K4me3_signal[, 9:12])
 
-log2_H3K4me3 <- log2((mean_memory_H3K4me3 + pseudocount) / (mean_naïve_H3K4me3 + pseudocount))
+log2_H3K4me3 <- log2((mean_memory_H3K4me3 + pseudocount) / (mean_naive_H3K4me3 + pseudocount))
 sig_rows_H3K4me3 <- which(abs(log2_H3K4me3) > 0.58496)
 sig_H3K4me3_signal <- H3K4me3_signal[sig_rows_H3K4me3, 1:8] #14862 elements
 scaled_signal_H3K4me3 <- t(scale(t(sig_H3K4me3_signal)))   
 
 ## H3K27ac
-mean_naïve_H3K27ac <- rowMeans(H3K27ac_signal[, 1:4])  
+mean_naive_H3K27ac <- rowMeans(H3K27ac_signal[, 1:4])  
 mean_memory_H3K27ac <- rowMeans(H3K27ac_signal[, 5:8])  
 mean_exh_H3K27ac <- rowMeans(H3K27ac_signal[, 9:12])  
 
-log2_H3K27ac <- log2((mean_memory_H3K27ac + pseudocount) / (mean_naïve_H3K27ac + pseudocount))
+log2_H3K27ac <- log2((mean_memory_H3K27ac + pseudocount) / (mean_naive_H3K27ac + pseudocount))
 sig_rows_H3K27ac <- which(abs(log2_H3K27ac) > 0.58496)
 sig_H3K27ac_signal <- H3K27ac_signal[sig_rows_H3K27ac,1:8 ]
 scaled_signal_H3K27ac <- t(scale(t(sig_H3K27ac_signal)))  
 
 ## H3K27me3
-mean_naïve_H3K27me3 <- rowMeans(H3K27me3_signal[, 1:4])   
+mean_naive_H3K27me3 <- rowMeans(H3K27me3_signal[, 1:4])   
 mean_memory_H3K27me3 <- rowMeans(H3K27me3_signal[, 5:8]) 
 mean_exh_H3K27me3 <- rowMeans(H3K27me3_signal[, 9:12])  
 
-log2_H3K27me3 <- log2((mean_memory_H3K27me3 + pseudocount) / (mean_naïve_H3K27me3 + pseudocount))
+log2_H3K27me3 <- log2((mean_memory_H3K27me3 + pseudocount) / (mean_naive_H3K27me3 + pseudocount))
 sig_rows_H3K27me3 <- which(abs(log2_H3K27me3) > 0.58496)
 sig_H3K27me3_signal <- H3K27me3_signal[sig_rows_H3K27me3, 1:8 ]
 scaled_signal_H3K27me3 <- t(scale(t(sig_H3K27me3_signal)))  
 
 
 ## H3K9me3
-mean_naïve_H3K9me3 <- rowMeans(H3K9me3_signal[, 1:4])   
+mean_naive_H3K9me3 <- rowMeans(H3K9me3_signal[, 1:4])   
 mean_memory_H3K9me3 <- rowMeans(H3K9me3_signal[, 5:8]) 
 mean_exh_H3K9me3 <- rowMeans(H3K9me3_signal[, 9:12])  
 
-log2_H3K9me3 <- log2((mean_memory_H3K9me3 + pseudocount) / (mean_naïve_H3K9me3 + pseudocount))
+log2_H3K9me3 <- log2((mean_memory_H3K9me3 + pseudocount) / (mean_naive_H3K9me3 + pseudocount))
 sig_rows_H3K9me3 <- which(abs(log2_H3K9me3) > 0.58496)
 sig_H3K9me3_signal <- H3K9me3_signal[sig_rows_H3K9me3, 1:8 ]
 scaled_signal_H3K9me3 <- t(scale(t(sig_H3K9me3_signal)))  
@@ -306,26 +306,26 @@ scaled_signal_H3K9me3 <- t(scale(t(sig_H3K9me3_signal)))
 ### 6.3.3) Naïve and exhausted T-cells:
 ```{r}
 ## H3K4me3
-log2_H3K4me3_EXN <- log2((mean_exh_H3K4me3 + pseudocount) / (mean_naïve_H3K4me3 + pseudocount))
+log2_H3K4me3_EXN <- log2((mean_exh_H3K4me3 + pseudocount) / (mean_naive_H3K4me3 + pseudocount))
 sig_rows_H3K4me3_EXN <- which(abs(log2_H3K4me3_EXN) > 0.58496)
 sig_H3K4me3_signal_EXN <- H3K4me3_signal[sig_rows_H3K4me3_EXN,c(1:4, 9:12)]
 scaled_signal_H3K4me3_EXN <- t(scale(t(sig_H3K4me3_signal_EXN)))  
 
 
 ## H3K27ac
-log2_H3K27ac_EXN <- log2((mean_exh_H3K27ac + pseudocount) / (mean_naïve_H3K27ac + pseudocount))
+log2_H3K27ac_EXN <- log2((mean_exh_H3K27ac + pseudocount) / (mean_naive_H3K27ac + pseudocount))
 sig_rows_H3K27ac_EXN <- which(abs(log2_H3K27ac_EXN) > 0.58496)
 sig_H3K27ac_signal_EXN <- H3K27ac_signal[sig_rows_H3K27ac,c(1:4, 9:12)]
 scaled_signal_H3K27ac_EXN <- t(scale(t(sig_H3K27ac_signal_EXN)))  
 
 # H3K27me3
-log2_H3K27me3_EXN <- log2((mean_exh_H3K27me3 + pseudocount) / (mean_naïve_H3K27me3 + pseudocount))
+log2_H3K27me3_EXN <- log2((mean_exh_H3K27me3 + pseudocount) / (mean_naive_H3K27me3 + pseudocount))
 sig_rows_H3K27me3_EXN <- which(abs(log2_H3K27me3_EXN) > 0.58496)
 sig_H3K27me3_signal_EXN <- H3K27me3_signal[sig_rows_H3K27me3_EXN,c(1:4, 9:12)]
 scaled_signal_H3K27me3_EXN <- t(scale(t(sig_H3K27me3_signal_EXN)))  
 
 # H3K9me3
-log2_H3K9me3_EXN <- log2((mean_exh_H3K9me3 + pseudocount) / (mean_naïve_H3K9me3 + pseudocount))
+log2_H3K9me3_EXN <- log2((mean_exh_H3K9me3 + pseudocount) / (mean_naive_H3K9me3 + pseudocount))
 sig_rows_H3K9me3_EXN <- which(abs(log2_H3K9me3_EXN) > 0.58496)
 sig_H3K9me3_signal_EXN <- H3K9me3_signal[sig_rows_H3K9me3_EXN,c(1:4, 9:12)]
 scaled_signal_H3K9me3_EXN <- t(scale(t(sig_H3K9me3_signal_EXN)))  
