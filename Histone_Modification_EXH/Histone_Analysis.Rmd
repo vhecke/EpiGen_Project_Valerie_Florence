@@ -26,6 +26,7 @@ suppressPackageStartupMessages({
   library(AnnotationDbi)
   library(valr)
   library(EnrichedHeatmap)
+  library(ChIPseeker)
 })
 ```
 
@@ -39,6 +40,43 @@ For the analysis, we split the workload in comparing naive and memory cells (par
 ```{r}
 head(read.table("peaks/NormRC_H3K27ac_wID.txt", header = TRUE))
 ```
+```{r}
+seqlevelsStyle(peaks) <- "UCSC"
+annotate_peaks_with_genes <- function(gr, txdb, annoDb) {
+  # Perform annotation
+  annotated <- annotatePeak(gr, TxDb = txdb, annoDb = annoDb)
+  
+  # Convert to data frame
+  df <- as.data.frame(annotated)
+  
+  # Map geneId (Entrez) to SYMBOL if missing
+  if (!"SYMBOL" %in% colnames(df) && "geneId" %in% colnames(df)) {
+    df$SYMBOL <- mapIds(org.Hs.eg.db, 
+                        keys = df$geneId,
+                        column = "SYMBOL",
+                        keytype = "ENTREZID",
+                        multiVals = "first")
+  }
+  
+  return(df)
+}
+
+# Annotate each GRanges object
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+annoDb <- "org.Hs.eg.db"
+
+H3K27ac_annot <- annotate_peaks_with_genes(peaks$H3K27ac, txdb, annoDb)
+H3K27me3_annot <- annotate_peaks_with_genes(peaks$H3K27me3, txdb, annoDb)
+H3K4me3_annot  <- annotate_peaks_with_genes(peaks$H3K4me3, txdb, annoDb)
+H3K9me3_annot  <- annotate_peaks_with_genes(peaks$H3K9me3, txdb, annoDb)
+
+# Optionally inspect the first few annotated rows
+head(H3K27me3_annot[, c("seqnames", "start", "end", "annotation", "geneId", "SYMBOL", "distanceToTSS")])
+
+
+```
+
+
 
 ```{r}
 setwd("~/Documents/GitHub/EpiGen_Project_Valerie_Florence/Histone_Modification_EXH/peaks")
@@ -57,7 +95,7 @@ H3K9me3_df <- read.table("peaks/NormRC_H3K9me3_wID.txt", header = TRUE)
 
 # Converting to GRanges
 
-H3K27ac_gr <- GRanges(seqnames = H3K27ac_df$peakN, ranges = IRanges(start = H3K27ac_df$Start, end = H3K27ac_df$End))
+H3K27ac_gr <- GRanges(seqnames = H3K27ac_df$Chr, ranges = IRanges(start = H3K27ac_df$Start, end = H3K27ac_df$End))
 H3K27me3_gr <- GRanges(seqnames = H3K27me3_df$Chr, ranges = IRanges(start = H3K27me3_df$Start, end = H3K27me3_df$End))
 H3K4me3_gr <- GRanges(seqnames = H3K4me3_df$Chr, ranges = IRanges(start = H3K4me3_df$Start, end = H3K4me3_df$End))
 H3K9me3_gr <- GRanges(seqnames = H3K9me3_df$Chr, ranges = IRanges(start = H3K9me3_df$Start, end = H3K9me3_df$End))
@@ -74,6 +112,12 @@ peaks <- GRangesList(
 ```
 
 # We want to visualize changes in histone modifications between the different cells (here: part 2, naive vs. exhausted). The intensity is defined as the mean expression of the histones over the 4 reps. We then want to plot only regions with significant changes, which we defined as log2 fold change >0.1 or <-0.1.
+
+#Annotate Peaks with Gene Information
+```{r}
+
+```
+
 
 # H3K27ac
 ```{r}
@@ -181,21 +225,21 @@ Now that we have visualized the changes based on the log2FC we want to have a cl
 log2FC_sig_H3K27ac <- log2FC_H3K27ac[sig_rows_H3K27ac]
 top200_idx_H3K27ac <- order(abs(log2FC_sig_H3K27ac), decreasing = TRUE)[1:200]
 top200_scaled_signal_H3K27ac <- scaled_signal_H3K27ac[top200_idx_H3K27ac, ]
-pheatmap(top200_scaled_signal_H3K27ac, main = "H3K27ac (Memory & Exhausted) Top 200 Significant Regions", show_rownames = FALSE, cutree_rows = 2)
+pheatmap(top200_scaled_signal_H3K27ac, main = "H3K27ac (Naive & Exhausted) Top 200 Significant Regions", show_rownames = FALSE, cutree_rows = 2)
 ```
 #H3K27me3 top 200
 ```{r}
 log2FC_sig_H3K27me3 <- log2FC_H3K27me3[sig_rows_H3K27me3]
 top200_idx_H3K27me3 <- order(abs(log2FC_sig_H3K27me3), decreasing = TRUE)[1:200]
 top200_scaled_signal_H3K27me3 <- scaled_signal_H3K27me3[top200_idx_H3K27me3, ]
-pheatmap(top200_scaled_signal_H3K27me3, main = "H3K27me3 (Memory & Exhausted) Top 200 Significant Regions", show_rownames = FALSE, cutree_rows = 2)
+pheatmap(top200_scaled_signal_H3K27me3, main = "H3K27me3 (Naive & Exhausted) Top 200 Significant Regions", show_rownames = FALSE, cutree_rows = 2)
 ```
 #H3K9me3
 ```{r}
 log2FC_sig_H3K9me3 <- log2FC_H3K27me3[sig_rows_H3K9me3]
 top200_idx_H3K9me3 <- order(abs(log2FC_sig_H3K9me3), decreasing = TRUE)[1:200]
 top200_scaled_signal_H3K9me3 <- scaled_signal_H3K27me3[top200_idx_H3K9me3, ]
-pheatmap(top200_scaled_signal_H3K9me3, main = "H3K9me3(Memory & Exhausted) Top 200 Significant Regions", show_rownames = FALSE, cutree_rows = 2)
+pheatmap(top200_scaled_signal_H3K9me3, main = "H3K9me3(Naive & Exhausted) Top 200 Significant Regions", show_rownames = FALSE, cutree_rows = 2)
 ```
 
 #H3K4me3
@@ -203,6 +247,37 @@ pheatmap(top200_scaled_signal_H3K9me3, main = "H3K9me3(Memory & Exhausted) Top 2
 log2FC_sig_H3K4me3 <- log2FC_H3K4me3[sig_rows_H3K4me3]
 top200_idx_H3K4me3 <- order(abs(log2FC_sig_H3K4me3), decreasing = TRUE)[1:200]
 top200_scaled_signal_H3K4me3 <- scaled_signal_H3K4me3[top200_idx_H3K4me3, ]
-pheatmap(top200_scaled_signal_H3K4me3, main = "H3K4me3 (Memory & Exhausted) Top 200 Significant Regions", show_rownames = FALSE, cutree_rows = 2)
+pheatmap(top200_scaled_signal_H3K4me3, main = "H3K4me3 (Naive & Exhausted) Top 200 Significant Regions", show_rownames = FALSE, cutree_rows = 2)
 ```
+
+```{r}
+# Step 1: Subset log2FC for significant rows
+log2FC_sig_H3K4me3 <- log2FC_H3K4me3[sig_rows_H3K4me3]
+
+# Step 2: Get indices of top 200 by absolute log2FC
+top200_idx_H3K4me3 <- order(abs(log2FC_sig_H3K4me3), decreasing = TRUE)[1:200]
+
+# Step 3: Subset the scaled signal matrix
+top200_scaled_signal_H3K4me3 <- scaled_signal_H3K4me3[top200_idx_H3K4me3, ]
+
+# Step 4: Extract gene symbols from annotation
+# Ensure H3K4me3_annot aligns with original peak order
+gene_symbols_H3K4me3 <- H3K4me3_annot$SYMBOL[sig_rows_H3K4me3][top200_idx_H3K4me3]
+
+# Optional: Replace NAs with a placeholder
+gene_symbols_H3K4me3[is.na(gene_symbols_H3K4me3)] <- "NA"
+
+# Step 5: Set gene symbols as row names
+rownames(top200_scaled_signal_H3K4me3) <- gene_symbols_H3K4me3
+
+# Step 6: Plot heatmap with rownames (gene symbols)
+pheatmap(top200_scaled_signal_H3K4me3,
+         main = "H3K4me3 (Naive & Exhausted) Top 200 Significant Regions",
+         show_rownames = TRUE,
+         cutree_rows = 2)
+rownames(top200_scaled_signal_H3K4me3) <- make.unique(gene_symbols_H3K4me3)
+
+write.csv(top200_scaled_signal_H3K4me3, "H3K4me3_top200_scaled_with_symbols.csv")
+```
+
 
