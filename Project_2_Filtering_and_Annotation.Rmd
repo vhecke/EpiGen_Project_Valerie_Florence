@@ -66,7 +66,6 @@ H3K4me3_df <- H3K4me3_df[, -c(11:14)]
 H3K9me3_df <- H3K9me3_df[, -c(11:14)]
 
 # Converting the txt files to GRanges files
-#CTCF_gr <- GRanges(seqnames = CTCF_df$Chr, ranges = IRanges(start = CTCF_df$Start, end = CTCF_df$End))
 H3K27ac_gr <- GRanges(seqnames = H3K27ac_df$Chr, ranges = IRanges(start = H3K27ac_df$Start, end = H3K27ac_df$End), peak = H3K27ac_df$peakN)
 H3K27me3_gr <- GRanges(seqnames = H3K27me3_df$Chr, ranges = IRanges(start = H3K27me3_df$Start, end = H3K27me3_df$End), peak = H3K27me3_df$peakN)
 H3K4me3_gr <- GRanges(seqnames = H3K4me3_df$Chr, ranges = IRanges(start = H3K4me3_df$Start, end = H3K4me3_df$End), peak = H3K4me3_df$peakN)
@@ -74,7 +73,6 @@ H3K9me3_gr <- GRanges(seqnames = H3K9me3_df$Chr, ranges = IRanges(start = H3K9me
 
 # Extracting the peaks of all available 
 peaks <- GRangesList(
-  #CTCF = CTCF_gr,
   H3K27ac = H3K27ac_gr,
   H3K27me3 = H3K27me3_gr,
   H3K4me3 = H3K4me3_gr,
@@ -82,7 +80,6 @@ peaks <- GRangesList(
 )
 
 dir.create("peak_bed_files")
-#rtracklayer::export(peaks$CTCF, "peak_bed_files/CTCF_peaks.bed")
 rtracklayer::export(peaks$H3K27ac, "peak_bed_files/H3K27ac_peaks.bed")
 rtracklayer::export(peaks$H3K27me3, "peak_bed_files/H3K27me3_peaks.bed")
 rtracklayer::export(peaks$H3K4me3, "peak_bed_files/H3K4me3_peaks.bed")
@@ -756,7 +753,7 @@ symbol_lookup <- setNames(combined_symbols$SYMBOL, combined_symbols$peak)
 ```
                              
 ## 7.1) Annotation Preprocessing
-For annotating genes we chose to exclude all peaks with values that are 0 to hopefully have heatmaps that are a bit more easy to read.
+For annotating genes we chose to exclude all peaks with values that are 0 to have heatmaps that are a bit more easy to read.
 ```{r}
 anno_MN <-combined_scaled[top_rows, ]
 anno_EXN <-combined_scaled_EXN[top_rows_EXN, ]
@@ -784,10 +781,13 @@ dim(anno_EXN_filtered)
 anno_EXM_filtered  <- anno_EXM_clean[apply(anno_EXM_clean != 0, 1, all), ,drop = FALSE]
 dim(anno_EXM_filtered)
 ```
-The first three matrices all contain 5000 peaks, sicne we previously filtered for the top 5000 peaks in every hPMT. Post filtering out any rows that contained a zero, i.e. not significant across all hPMTs, the datasets were substantially smaller.
+The first three matrices all contain 5000 peaks, since we previously filtered for the top 5000 peaks in every hPMT. Post filtering out any rows that contained a zero, i.e. not significant across all hPMTs, the datasets were substantially smaller.
+
+For visualisation and readability of the heatmaps, we filtered the datasets again to only include the top 50 hits.
 
 ```{r}
-annot_hmap1 <- pheatmap::pheatmap(anno_MN_filtered, breaks = my_breaks, 
+top_rows_1<- head(order(apply(anno_MN_filtered, 1, var), decreasing = TRUE), 50)
+annot_hmap1 <- pheatmap::pheatmap(anno_MN_filtered[top_rows_1, ], breaks = my_breaks, 
          annotation_col = annotation_col,
          annotation_colors = annotation_colors,
          show_colnames = FALSE,
@@ -795,10 +795,12 @@ annot_hmap1 <- pheatmap::pheatmap(anno_MN_filtered, breaks = my_breaks,
          main = "Memory vs. Exhausted T-Cell",
          cluster_rows = TRUE,
          cluster_cols = F,
-         silent = FALSE,
-         cellheight = 10)
+         silent = T,
+         fontsize_row = 7,
+         cellheight = 8)
 
-annot_hmap2 <- pheatmap::pheatmap(anno_EXN_filtered, breaks = my_breaks, 
+top_rows_2 <- head(order(apply(anno_EXN_filtered, 1, var), decreasing = TRUE), 50)
+annot_hmap2 <- pheatmap::pheatmap(anno_EXN_filtered[top_rows_2, ], breaks = my_breaks, 
          annotation_col = annotation_col_2,
          annotation_colors = annotation_colors_2,
          show_colnames = FALSE,
@@ -806,10 +808,12 @@ annot_hmap2 <- pheatmap::pheatmap(anno_EXN_filtered, breaks = my_breaks,
          main = "Memory vs. Exhausted T-Cell",
          cluster_rows = TRUE,
          cluster_cols = F,
-         silent = FALSE,
-         cellheight = 10)
+         silent = T,
+         fontsize_row = 7,
+         cellheight = 8)
 
-annot_hmap3 <- pheatmap::pheatmap(anno_EXM_filtered, breaks = my_breaks, 
+top_rows_3 <- head(order(apply(anno_EXM_filtered, 1, var), decreasing = TRUE), 50)
+annot_hmap3 <- pheatmap::pheatmap(anno_EXM_filtered[top_rows_3, ], breaks = my_breaks, 
          annotation_col = annotation_col_3,
          annotation_colors = annotation_colors_3,
          show_colnames = FALSE,
@@ -817,23 +821,23 @@ annot_hmap3 <- pheatmap::pheatmap(anno_EXM_filtered, breaks = my_breaks,
          main = "Memory vs. Exhausted T-Cell",
          cluster_rows = TRUE,
          cluster_cols = F,
-         silent = FALSE,
-         cellheight = 10)
+         silent = T,
+         fontsize_row = 7,
+         cellheight = 8)
 
 ```
 
 
-```{r, fig.width=8, fig.height=9, fig.cap = "Figure 6. Heatmaps of Differential Histone Modification Signals with Zero-Value Peaks Removed. Each heatmap displays z-scored signal intensities for regions with significant differences (|log₂ fold change| > 0.58496) across four histone modifications (H3K4me3, H3K27ac, H3K27me3, H3K9me3) in pairwise comparisons: naïve vs. memory, naïve vs. exhausted, and memory vs. exhausted T cells. Only peaks with non-zero signal across all samples in each comparison are included. Rows represent genomic peaks; columns represent biological replicates, annotated by histone mark and cell type. "}
+```{r, fig.width=8, fig.height=20, fig.cap = "Figure 6. Heatmaps of Differential Histone Modification Signals with Zero-Value Peaks Removed. Each heatmap displays z-scored signal intensities for regions with significant differences (|log₂ fold change| > 0.58496) across four histone modifications (H3K4me3, H3K27ac, H3K27me3, H3K9me3) in pairwise comparisons: naïve vs. memory, naïve vs. exhausted, and memory vs. exhausted T-cells. Only peaks with non-zero signal across all samples in each comparison are included. Rows represent genomic peaks; columns represent biological replicates, annotated by histone mark and cell type. "}
 grid.arrange(
   annot_hmap1$gtable, 
   annot_hmap2$gtable, 
   annot_hmap3$gtable, 
   ncol = 1,
-  top = "Heatmaps of Differential Histone Modification Signals with Zero-Value Peaks Removed"
+  top = "Heatmaps of Top 50 Differential Histone Modification Signals with Gene Annotations"
 )
 ```
-
-
+For the scope of this project, screening up to 150 different genes would be too extensive. Therefore from each heatmap, 4 clusters, one from every hPMT, were chosen visually and the genes in this cluster were screened for function in the cell using enrichR. 
 
 # 8.) Numerical Quantification of Heatmaps
 ## 8.1) Numerical evaluation of activating, repressing and bivalent regions across cell type comparisons
