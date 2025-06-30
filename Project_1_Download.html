@@ -382,7 +382,7 @@ Modifications in Memory and Exhausted CD8 T Cells</h1>
 
 
 <div id="setup-and-packages" class="section level1">
-<h1>Setup and Packages</h1>
+<h1>1.) Setup and Packages</h1>
 <pre class="r"><code>suppressPackageStartupMessages({
   library(AnnotationHub)
   library(ensembldb)
@@ -405,7 +405,7 @@ Modifications in Memory and Exhausted CD8 T Cells</h1>
 })</code></pre>
 </div>
 <div id="introduction-and-background" class="section level1">
-<h1>Introduction and background</h1>
+<h1>2.) Introduction and background</h1>
 <p>Based on a mutual interest in immune cells, and data availability, we
 decided to partially redo the analysis of the paper “Deciphering the
 role of Histone Modifications in Memory and Exhausted CD8 T Cells” by
@@ -450,10 +450,10 @@ irreversible changes that could potentially explain the phenotypes of
 these cell types.</p>
 </div>
 <div id="methods" class="section level1">
-<h1>Methods</h1>
+<h1>3.) Methods</h1>
 <p>For our analysis we structured the document as follows:</p>
 <div id="downloading-the-data" class="section level2">
-<h2>Downloading the data</h2>
+<h2>3.1) Downloading the data</h2>
 <p>The data was available in txt and bw files, which we both needed for
 the analysis. All normalised hPMTs and the normalised CTCF file were
 download in txt format, while all hPMTs for all cell types were
@@ -466,7 +466,7 @@ T<span class="math inline">\(_{Mem}\)</span> and while for T<span class="math in
 seeding were used.</p>
 </div>
 <div id="quality-control-of-peaks" class="section level2">
-<h2>Quality control of peaks</h2>
+<h2>3.2) Quality control of peaks</h2>
 <p>After downloading and importing the files, we performed an upset plot
 to see the intersection size of the signal of our histone modifications
 across all cell types. The quality of our peakfiles was checked by
@@ -474,7 +474,7 @@ performing a principal component analysis to see how the different cells
 and histone modifications would cluster.</p>
 </div>
 <div id="signal-extraction-and-filtering" class="section level2">
-<h2>Signal Extraction and Filtering</h2>
+<h2>3.3) Signal Extraction and Filtering</h2>
 <p>Since the peak data was only available as txt files, we had to
 convert them to GRanges files. This was done with assistance from
 Perplexity AI. After converting the files, we split the files to only
@@ -484,7 +484,7 @@ comparison, the mean(log2(signal)) of both cell types was compared,
 always dividing the mean of the first named by the second named
 (i.e. T<span class="math inline">\(_{Naive}\)</span>-T<span class="math inline">\(_{Mem}\)</span>: mean(log2(signal T<span class="math inline">\(_{Mem}\)</span>)) / mean(log2(signal T<span class="math inline">\(_{Naive}\)</span>))). To avoid a log2(0), a
 pseudocount of 1e-6 was added to all the mean values. Absolute values
-&gt; 0.1 were deemed significant and further analysed.</p>
+&gt; 0.58496 were deemed significant and further analysed.</p>
 <p>First we looked at changes in hPMTs within each histone modification
 by generating heatmaps, then in a second step, all hPMTs were combined
 into one heatmap to see if the regions overlapped.</p>
@@ -492,52 +492,52 @@ into one heatmap to see if the regions overlapped.</p>
 and bivalent regions were were extracted and compared to see how the
 regions change numerically during the differentiation steps.</p>
 </div>
-</div>
-<div id="clustering-and-enriched-heatmaps" class="section level1">
-<h1>Clustering and Enriched Heatmaps</h1>
+<div id="clustering-and-enriched-heatmaps" class="section level2">
+<h2>3.4) Clustering and Enriched Heatmaps</h2>
 <p>For analysis of the different histone modfications, the peaks and
 tracks were plotted and analysed using the EnrichedHeatmaps package.</p>
 </div>
+</div>
 <div id="downloading-of-data" class="section level1">
-<h1>Downloading of data</h1>
+<h1>4.) Downloading of data</h1>
 <p>Since downloading and processing the data, the GEO website for this
 dataset has endured a connection failure. The downloaded datasets are be
-included in the hand-in file. ## Peaks</p>
+included in the hand-in file. ## 4.1) Peaks</p>
 <pre class="r"><code>dir.create(&quot;peaks&quot;)
 download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FCTCF%5FwID%2Etxt%2Egz&quot;, &quot;peaks/CTCF.txt.gz&quot;)
 gunzip(&quot;peaks/CTCF.txt.gz&quot;)
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FH3K27ac%5FwID%2Etxt%2Egz&quot;, &quot;peaks/H3K27ac_wID.txt.gz&quot;)
-gunzip(&quot;peaks/H3K27ac_wID.txt.gz&quot;)
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FH3K27me3%5FwID%2Etxt%2Egz&quot;, &quot;peaks/H3K27me3_wID.txt.gz&quot;)
-gunzip(&quot;peaks/H3K27me3_wID.txt.gz&quot;)
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FH3K4me3%5FwID%2Etxt%2Egz&quot;, &quot;peaks/H3K4me3_wID.txt.gz&quot;)
-gunzip(&quot;peaks/H3K4me3_wID.txt.gz&quot;)
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FH3K9me3%5FwID%2Etxt%2Egz&quot;, &quot;peaks/H3K9me3_wID.txt.gz&quot;)
-gunzip(&quot;peaks/H3K9me3_wID.txt.gz&quot;)</code></pre>
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FH3K27ac%5FwID%2Etxt%2Egz&quot;, &quot;peaks/H3K27ac.txt.gz&quot;)
+gunzip(&quot;peaks/H3K27ac.txt.gz&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FH3K27me3%5FwID%2Etxt%2Egz&quot;, &quot;peaks/H3K27me3.txt.gz&quot;)
+gunzip(&quot;peaks/H3K27me3.txt.gz&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FH3K4me3%5FwID%2Etxt%2Egz&quot;, &quot;peaks/H3K4me3.txt.gz&quot;)
+gunzip(&quot;peaks/H3K4me3.txt.gz&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE285245&amp;format=file&amp;file=GSE285245%5FNormRC%5FH3K9me3%5FwID%2Etxt%2Egz&quot;, &quot;peaks/H3K9me3.txt.gz&quot;)
+gunzip(&quot;peaks/H3K9me3.txt.gz&quot;)</code></pre>
 <div id="bigwig-files" class="section level2">
-<h2>BigWig Files</h2>
+<h2>4.2) BigWig Files</h2>
 <div id="naive-t-cells" class="section level3">
-<h3>Naive T-Cells</h3>
+<h3>4.2.1) Naive T-Cells</h3>
 <pre class="r"><code>options(timeout = 12000)
 
 dir.create(&quot;BW&quot;)
 # Key Activating
 
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699095&amp;format=file&amp;file=GSM8699095%5FNaive%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS1%2Escale%2Ebw&quot;, &quot;BW/H3K4me3_naive_30.bw.&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699095&amp;format=file&amp;file=GSM8699095%5FNaive%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS1%2Escale%2Ebw&quot;, &quot;BW/H3K4me3_naive.bw.&quot;)
 
 
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699079&amp;format=file&amp;file=GSM8699079%5FNaive%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS1%2Escale%2Ebw&quot;, &quot;BW/H3K27ac_naive_30.bw&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699079&amp;format=file&amp;file=GSM8699079%5FNaive%5FP14%5FDay30%5FH3K27ac%5FRep1%5FS1%2Escale%2Ebw&quot;, &quot;BW/H3K27ac_naive.bw&quot;)
 
 
 # KeyRepressive
 
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699111&amp;format=file&amp;file=GSM8699111%5FNaive%5FP14%5FDay30%5FH3K27me3%5FRep2%5FS6%2Escale%2Ebw&quot;, &quot;BW/H3K27me3_naive_30.bw&quot;)
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699111&amp;format=file&amp;file=GSM8699111%5FNaive%5FP14%5FDay30%5FH3K27me3%5FRep2%5FS6%2Escale%2Ebw&quot;, &quot;BW/H3K27me3_naive.bw&quot;)
 
 
-download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699127&amp;format=file&amp;file=GSM8699127%5FNaive%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS1%2Escale%2Ebw&quot;, &quot;BW/H3K9me3_naive_30.bw&quot;)</code></pre>
+download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699127&amp;format=file&amp;file=GSM8699127%5FNaive%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS1%2Escale%2Ebw&quot;, &quot;BW/H3K9me3_naive.bw&quot;)</code></pre>
 </div>
 <div id="memory-t-cells" class="section level3">
-<h3>Memory T-Cells</h3>
+<h3>4.2.2) Memory T-Cells</h3>
 <pre class="r"><code>options(timeout = 12000)
 
 download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699103&amp;format=file&amp;file=GSM8699103%5FArm%5FP14%5FDay30%5FH3K4me3%5FRep1%5FS5%2Escale%2Ebw&quot;, &quot;BW/H3K4me3_memory.bw&quot;)
@@ -549,7 +549,7 @@ download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699119&am
 download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699135&amp;format=file&amp;file=GSM8699135%5FArm%5FP14%5FDay30%5FH3K9me3%5FRep1%5FS3%2Escale%2Ebw&quot;, &quot;BW/H3K9me3_memory.bw&quot;)</code></pre>
 </div>
 <div id="exhausted-t-cells" class="section level3">
-<h3>Exhausted T-Cells</h3>
+<h3>4.2.3) Exhausted T-Cells</h3>
 <pre class="r"><code>options(timeout = 12000)
 
 #H3K27ac, Day32, rep1
@@ -565,8 +565,9 @@ download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699107&am
 download.file(&quot;https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM8699139&amp;format=file&amp;file=GSM8699139%5FCl13%5FP14%5FDay32%5FH3K9me3%5FRep1%5FS5%2Escale%2Ebw&quot;, &quot;BW/H3K9me3_EX.bw&quot;)</code></pre>
 </div>
 </div>
-<div id="bibliography" class="section level2 unnumbered">
-<h2 class="unnumbered">Bibliography</h2>
+</div>
+<div id="bibliography" class="section level1 unnumbered">
+<h1 class="unnumbered">5.) Bibliography</h1>
 <div id="refs" class="references csl-bib-body hanging-indent" entry-spacing="0">
 <div id="ref-Wherry2010" class="csl-entry">
 Angelosanto, Jill M., and E. John Wherry. 2010. <span>“Transcription
@@ -589,7 +590,6 @@ and Targeted Therapy</em> 8 (1): 235. <a href="https://doi.org/10.1038/s41392-02
 <div id="ref-Wherry2011" class="csl-entry">
 Wherry, E. John. 2011. <span>“T Cell Exhaustion.”</span> <em>Nature
 Immunology</em> 12 (6): 492–99. <a href="https://doi.org/10.1038/ni.2035">https://doi.org/10.1038/ni.2035</a>.
-</div>
 </div>
 </div>
 </div>
