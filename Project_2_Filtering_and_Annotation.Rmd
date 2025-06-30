@@ -30,8 +30,6 @@ suppressPackageStartupMessages({
   library(limma)
   library(plyranges)
   library(dplyr)
-  library(ChIPseeker)
-  library(TxDb.Mmusculus.UCSC.mm10.knownGene)
 })
 ```
 
@@ -67,10 +65,10 @@ H3K9me3_df <- H3K9me3_df[, -c(11:14)]
 
 # Converting the txt files to GRanges files
 #CTCF_gr <- GRanges(seqnames = CTCF_df$Chr, ranges = IRanges(start = CTCF_df$Start, end = CTCF_df$End))
-H3K27ac_gr <- GRanges(seqnames = H3K27ac_df$Chr, ranges = IRanges(start = H3K27ac_df$Start, end = H3K27ac_df$End), peak = H3K27ac_df$peakN)
-H3K27me3_gr <- GRanges(seqnames = H3K27me3_df$Chr, ranges = IRanges(start = H3K27me3_df$Start, end = H3K27me3_df$End), peak = H3K27me3_df$peakN)
-H3K4me3_gr <- GRanges(seqnames = H3K4me3_df$Chr, ranges = IRanges(start = H3K4me3_df$Start, end = H3K4me3_df$End), peak = H3K4me3_df$peakN)
-H3K9me3_gr <- GRanges(seqnames = H3K9me3_df$Chr, ranges = IRanges(start = H3K9me3_df$Start, end = H3K9me3_df$End), peak = H3K9me3_df$peakN)
+H3K27ac_gr <- GRanges(seqnames = H3K27ac_df$Chr, ranges = IRanges(start = H3K27ac_df$Start, end = H3K27ac_df$End))
+H3K27me3_gr <- GRanges(seqnames = H3K27me3_df$Chr, ranges = IRanges(start = H3K27me3_df$Start, end = H3K27me3_df$End))
+H3K4me3_gr <- GRanges(seqnames = H3K4me3_df$Chr, ranges = IRanges(start = H3K4me3_df$Start, end = H3K4me3_df$End))
+H3K9me3_gr <- GRanges(seqnames = H3K9me3_df$Chr, ranges = IRanges(start = H3K9me3_df$Start, end = H3K9me3_df$End))
 
 # Extracting the peaks of all available 
 peaks <- GRangesList(
@@ -715,8 +713,8 @@ The most dramatic differences occur between these functionally opposite states, 
 
 These results suggest that T cell exhaustion represents an active epigenetic silencing process rather than simply a loss of memory cell characteristics. The distinct chromatin landscapes likely contribute to the functional differences between these T cell states and may represent therapeutic targets for reversing T cell exhaustion.
 
-# 7.) Annotation 
-
+# 7.) Gene Annotation
+For annotating genes we followed the transcription start site mapping done in the paper, of +/- 250kb, to evaluate distant enhancers and repressors, for active promoters we chose to use a more narrow window of 3000bp
 ```{r}
 anno_H3K27ac <- annotatePeak(peaks$H3K27ac,
                              TxDb = TxDb.Mmusculus.UCSC.mm10.knownGene,
@@ -754,9 +752,9 @@ anno_4 <- H3K9me3_anno_df[, c("peak","SYMBOL")]
 combined_symbols <- unique(rbind(anno_1, anno_2, anno_3, anno_4))
 symbol_lookup <- setNames(combined_symbols$SYMBOL, combined_symbols$peak)
 ```
-                             
+
 ## 7.1) Annotation Preprocessing
-For annotating genes we chose to exclude all peaks with values that are 0 to hopefully have heatmaps that are a bit more easy to read.
+For annotating genes we chose to exlude all rows that contain a 0 to hopefully have heatmaps that are a bit more easy to read.
 ```{r}
 anno_MN <-combined_scaled[top_rows, ]
 anno_EXN <-combined_scaled_EXN[top_rows_EXN, ]
@@ -832,7 +830,6 @@ grid.arrange(
   top = "Heatmaps of Differential Histone Modification Signals with Zero-Value Peaks Removed"
 )
 ```
-
 
 
 # 8.) Numerical Quantification of Heatmaps
