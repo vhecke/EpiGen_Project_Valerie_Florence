@@ -32,13 +32,12 @@ suppressPackageStartupMessages({
   library(universalmotif)
   library(PWMEnrich)
   library(cowplot)
+  library(dplyr)
+  library(ChIPseeker)
+  library(TxDb.Mmusculus.UCSC.mm10.knownGene)
+  library(clusterProfiler)
+  library(org.Mm.eg.db)
 })
-```
-
-```{r}
-ah <- AnnotationHub(localHub=TRUE)
-ensdb <- ah[["AH89211"]] # mouse ensembldb object
-genes <- genes(ensdb)
 ```
 
 # 9.) Comparing the histone modifications of naive T-cells
@@ -148,6 +147,7 @@ cluster2 <- ggplot(cl_m$varExplained, aes(k, varExplained)) + geom_line() + labs
 cl_e <- clusterSignalMatrices(sm_e1, k=2:7)
 cluster3 <- ggplot(cl_e$varExplained, aes(k, varExplained)) + geom_line() + labs(x = "Number of Clusters (k)", y = "Variance Explained")+ ggtitle("C) Cluster Signal Matrix Exhausted T-Cells") + theme_minimal()
 ```
+
 ```{r, fig.height= 10, fig.width=10, fig.cap="Figure 10. K-means clustering: Variance Explained by k for all three T-cell types: A) naive T-cells, B) memory T-cells, C) exhausted T-cells. x-axis visualises the numbers of clusters producced ranging from 2-7 clusters, y-axis shows the corresponding variance that is explained by these clusters." }
 grid.arrange(cluster1, cluster2, cluster3,
              ncol = 1,
@@ -206,4 +206,116 @@ melt3 <- ggplot(exhausted, aes(position, mean, colour=sample)) + geom_line(size=
 ```{r, fig.height = 10, fig.width=8, fig.cap= "Figure 14. Average profiles of histone modifications across six genomic region clusters in A) naïve T-cells, B) memory T-cells, and C) exhausted T-cells. Line plots show mean signal for H3K27ac, H3K27me3, H3K4me3, and H3K9me3 (±2 kb from centre, position 0) in each cluster. A) Clusters 2, 4, and 5 display strong central enrichment of active marks (H3K4me3, H3K27ac), while repressive mark H3K27me3 presents a low across enrichment in cluster 1. H3K9me3 is absent in all clusters. B) Clusters 1, 4, and 6 show strong central enrichment for active marks, while cluster 3 shows strong central enrichment for H2K27me3 repression. C) Clusters 1, 4, and 6 showing strong enrichment for active marks, and cluster 3 showing mild enrichment for active marks. Cluster 2 showing mild enrichment for repressive mark H3K27me3. "}
 plot_grid(melt1, melt2, melt3, ncol = 1)
 ```
+
+#10.0 GO Analysis
+
+Annotating the peaks of one of the clusters per hPMT
+```{r}
+txdb <- TxDb.Mmusculus.UCSC.mm10.knownGene
+
+sm_n1_cluster5 <- sm_n1[rowData(sm_n1)$cluster == 5]
+sm_m1_cluster4 <- sm_m1[rowData(sm_m1)$cluster == 4]
+sm_e1_cluster5 <- sm_e1[rowData(sm_e1)$cluster == 5]
+
+anno_n_cluster5 <- annotatePeak(rowRanges(sm_n1_cluster5), TxDb = txdb, annoDb = "org.Mm.eg.db", tssRegion = c(-3000, 3000), verbose = FALSE)
+anno_m_cluster4 <- annotatePeak(rowRanges(sm_m1_cluster4), TxDb = txdb, annoDb = "org.Mm.eg.db", tssRegion = c(-3000, 3000), verbose = FALSE)
+anno_e_cluster5 <- annotatePeak(rowRanges(sm_e1_cluster5), TxDb = txdb, annoDb = "org.Mm.eg.db", tssRegion = c(-3000, 3000), verbose = FALSE)
+
+genes_n1_cluster5 <- unique(na.omit(anno_n_cluster5@anno$geneId))
+genes_m1_cluster4 <- unique(na.omit(anno_m_cluster4@anno$geneId))
+genes_e1_cluster5 <- unique(na.omit(anno_e_cluster5@anno$geneId))
+```
+
+GO_Analyse
+```{r}
+GO_n_cluster5 <- enrichGO(gene = genes_n1_cluster5, OrgDb = org.Mm.eg.db, keyType = "ENTREZID", ont = "BP", pAdjustMethod = "BH", qvalueCutoff = 0.05, readable = TRUE)
+GO_m_cluster4 <- enrichGO(gene = genes_m1_cluster4, OrgDb = org.Mm.eg.db, keyType = "ENTREZID", ont = "BP", pAdjustMethod = "BH", qvalueCutoff = 0.05, readable = TRUE)
+GO_e_cluster5 <- enrichGO(gene = genes_e1_cluster5, OrgDb = org.Mm.eg.db, keyType = "ENTREZID", ont = "BP", pAdjustMethod = "BH", qvalueCutoff = 0.05, readable = TRUE)
+```
+
+plotting
+```{r}
+truncate_words <- function(x, n = 5) {
+  sapply(strsplit(x, " "), function(words) paste(head(words, n), collapse = " "))
+}
+
+# Naive cluster 1
+top_n_cluster5 <- as.data.frame(GO_n_cluster5) %>%
+  slice_head(n = 50) %>%
+  mutate(
+    Group = "Naive Cluster 5",
+    fold_enrichment = sapply(strsplit(GeneRatio, "/"), function(x) as.numeric(x[1]) / as.numeric(x[2])),
+    observed_region_hits = Count,
+    short_description = truncate_words(Description, n = 5),
+    p_adjust = p.adjust
+  )
+
+# Memory cluster 4
+top_m_cluster4 <- as.data.frame(GO_m_cluster4) %>%
+  slice_head(n = 50) %>%
+  mutate(
+    Group = "Memory Cluster 4",
+    fold_enrichment = sapply(strsplit(GeneRatio, "/"), function(x) as.numeric(x[1]) / as.numeric(x[2])),
+    observed_region_hits = Count,
+    short_description = truncate_words(Description, n = 5),
+    p_adjust = p.adjust
+  )
+
+# Exhausted cluster 5
+top_e_cluster5 <- as.data.frame(GO_e_cluster5) %>%
+  slice_head(n = 50) %>%
+  mutate(
+    Group = "Exhausted Cluster 1",
+    fold_enrichment = sapply(strsplit(GeneRatio, "/"), function(x) as.numeric(x[1]) / as.numeric(x[2])),
+    observed_region_hits = Count,
+    short_description = truncate_words(Description, n = 5),
+    p_adjust = p.adjust
+  )
+```
+
+
+```{r, fig.height = 10, fig.width=8, fig.cap= "Figure 15.1. Gene Ontology (GO) enrichment analysis of genomic regions in cluster 2 for naïve T-cells. Bubble plots display the 50 top enriched Biological Process terms for each cluster based on annotated genes within +/- 3kb of the TSS. The x-axis shows fold enrichement (gene ratio), bubble size indicates number of region-associated genes contributing to the term, and color represents statistical significance (-log10 adjusted p-value). Each cell type exhibits distinct GO term profiles, reflecting the functional programs associated with the chromatin states captured in the different clusters."}
+
+ggplot(top_n_cluster3, aes(fold_enrichment, reorder(short_description, fold_enrichment),
+                      size = observed_region_hits, color = -log10(p_adjust))) +
+  geom_point() +
+  scale_color_viridis_c() +
+  labs(
+    x = "Fold Enrichment", y = "GO Term (Naive)",
+    title = "Naive T-cell Cluster 5 GO Enrichment",
+    size = "Gene Count", color = "-log10(p.adjust)"
+  ) + theme_minimal()
+```
+Here, naïve T-cell cluster 5 is enriched for terms associated with adaptive immune regulation and development. Notably, the GO output also includes broad or non specific terms, such as "positive regulation of hydrolase activity", which are not directly related to T-cell function. These may arise due to the general nature of some GO categories, highlighting the importance of biological interpretation beyond statistical analysis alone. 
+
+```{r, fig.height = 10, fig.width=8, fig.cap= "Figure 15.2. Gene Ontology (GO) enrichment analysis of genomic regions in cluster 4 for memory T-cells. Bubble plots display the 50 top enriched Biological Process terms for each cluster based on annotated genes within +/- 3kb of the TSS. The x-axis shows fold enrichement (gene ratio), bubble size indicates number of region-associated genes contributing to the term, and color represents statistical significance (-log10 adjusted p-value). Each cell type exhibits distinct GO term profiles, reflecting the functional programs associated with the chromatin states captured in the different clusters."}
+
+ggplot(top_m_cluster4, aes(fold_enrichment, reorder(short_description, fold_enrichment),
+                      size = observed_region_hits, color = -log10(p_adjust))) +
+  geom_point() +
+  scale_color_viridis_c() +
+  labs(
+    x = "Fold Enrichment", y = "GO Term (Memory)",
+    title = "Memory T-cell Cluster 4 GO Enrichment",
+    size = "Gene Count", color = "-log10(p.adjust)"
+  ) + theme_minimal()
+```
+Here, memory T-cell cluster 4 is enriched for terms on T cell activation and regulation.
+
+```{r, fig.height = 10, fig.width=8, fig.cap= "Gene Ontology (GO) enrichment analysis of genomic regions in cluster 4 for exhausred T-cells. Bubble plots display the 50 top enriched Biological Process terms for each cluster based on annotated genes within +/- 3kb of the TSS. The x-axis shows fold enrichement (gene ratio), bubble size indicates number of region-associated genes contributing to the term, and color represents statistical significance (-log10 adjusted p-value). Each cell type exhibits distinct GO term profiles, reflecting the functional programs associated with the chromatin states captured in the different clusters."}
+
+ggplot(top_e_cluster5, aes(fold_enrichment, reorder(short_description, fold_enrichment),
+                      size = observed_region_hits, color = -log10(p_adjust))) +
+  geom_point() +
+  scale_color_viridis_c() +
+  labs(
+    x = "Fold Enrichment", y = "GO Term (Exhausted)",
+    title = "Exhausted T-cell Cluster 5 GO Enrichment",
+    size = "Gene Count", color = "-log10(p.adjust)"
+  ) + theme_minimal()
+```
+Here, exhausted T-cell cluster 5 is enriched for terms associated with viral response, which is consistent with the biology of T-Cell exhaustion, as chronic exposure to viral antigens is a key driver of this dysfunctional state.
+
+#11 Conclusion
+
 
